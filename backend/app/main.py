@@ -15,13 +15,13 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     Database.initialize()
-    print("✅ Database connection pool initialized")
+    print("[OK] Database connection pool initialized")
     
     yield
     
     # Shutdown
     Database.close()
-    print("✅ Database connections closed")
+    print("[OK] Database connections closed")
 
 
 # Initialize FastAPI app

@@ -42,6 +42,11 @@ def create_quiz(
         return quiz
         
     except Exception as e:
+        # Log full traceback
+        import traceback
+        print("[ERROR] Quiz creation failed:")
+        traceback.print_exc()
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create quiz: {str(e)}"
@@ -76,10 +81,12 @@ def get_quiz(quiz_id: int, cursor: RealDictCursor = Depends(get_db)):
             detail="Quiz not found"
         )
     
-    # Hide correct answers for users
+    # Hide correct answers for users (but keep option_id for submission)
     for question in quiz.get("questions", []):
         for option in question.get("options", []):
-            option.pop("is_correct", None)
+            # Keep option_id and option_text, remove is_correct
+            if "is_correct" in option:
+                del option["is_correct"]
     
     return quiz
 

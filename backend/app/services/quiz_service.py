@@ -6,7 +6,7 @@ from typing import Dict, Any
 from psycopg2.extras import RealDictCursor
 from app.models.quiz import QuizModel
 from app.models.question import QuestionModel
-from app.services.openai_service import OpenAIService
+from app.services.openai_service_direct import OpenAIService
 
 
 class QuizService:

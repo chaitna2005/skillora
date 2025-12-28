@@ -71,6 +71,7 @@ class TestModel:
         query = """
             SELECT 
                 uqt.uqt_id,
+                uqt.user_id,
                 uqt.start_time,
                 uqt.completed_time,
                 uqt.total_correct,
@@ -114,6 +115,7 @@ class TestModel:
         query = """
             SELECT 
                 uqt.uqt_id,
+                uqt.user_id,
                 uqt.start_time,
                 q.quiz_id,
                 q.quiz_name,
@@ -133,6 +135,7 @@ class TestModel:
         query = """
             SELECT 
                 uqt.uqt_id,
+                uqt.user_id,
                 uqt.start_time,
                 uqt.completed_time,
                 uqt.total_correct,

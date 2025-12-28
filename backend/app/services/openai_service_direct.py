@@ -1,28 +1,48 @@
 """
-OpenAI Service
-Handles AI question generation using OpenAI API
+OpenAI Service - Direct HTTP Implementation
+Bypasses the OpenAI client library to avoid compatibility issues
 """
-from openai import OpenAI
+import httpx
 import json
 from typing import List, Dict, Any
 from app.config import settings
-
-# Initialize OpenAI client at module level to avoid initialization issues
-_openai_client = None
-
-def get_openai_client():
-    """Get or create OpenAI client singleton"""
-    global _openai_client
-    if _openai_client is None:
-        _openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    return _openai_client
 
 
 class OpenAIService:
     
     def __init__(self):
-        # Use the module-level client
-        self.client = get_openai_client()
+        self.api_key = settings.OPENAI_API_KEY
+        self.model = settings.OPENAI_MODEL
+        self.base_url = "https://api.openai.com/v1"
+    
+    def _make_request(self, messages: List[Dict], temperature: float = 0.7, 
+                     response_format: Dict = None, max_tokens: int = None):
+        """Make direct HTTP request to OpenAI API"""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature
+        }
+        
+        if response_format:
+            payload["response_format"] = response_format
+        
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
+        
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            response.raise_for_status()
+            return response.json()
     
     def generate_quiz_questions(
         self, 
@@ -30,23 +50,8 @@ class OpenAIService:
         difficulty_level: str, 
         total_questions: int
     ) -> List[Dict[str, Any]]:
-        """
-        Generate quiz questions based on prompt and difficulty
+        """Generate quiz questions using direct API calls"""
         
-        Returns:
-            List of questions with format:
-            [
-                {
-                    "question_text": "...",
-                    "question_type": "RADIO" | "CHECKLIST",
-                    "options": [
-                        {"option_text": "...", "is_correct": True/False},
-                        ...
-                    ]
-                },
-                ...
-            ]
-        """
         system_prompt = """You are an expert quiz creator. Generate clear, educational quiz questions based on the given topic.
 
 Rules:
@@ -87,8 +92,7 @@ Mix of question types:
 Ensure questions are appropriate for {difficulty_level} difficulty level."""
 
         try:
-            response = self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+            result = self._make_request(
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -97,11 +101,11 @@ Ensure questions are appropriate for {difficulty_level} difficulty level."""
                 response_format={"type": "json_object"}
             )
             
-            content = response.choices[0].message.content
-            result = json.loads(content)
+            content = result["choices"][0]["message"]["content"]
+            data = json.loads(content)
             
             # Validate and return questions
-            questions = result.get("questions", [])
+            questions = data.get("questions", [])
             
             # Validation
             for q in questions:
@@ -125,8 +129,7 @@ Ensure questions are appropriate for {difficulty_level} difficulty level."""
     def generate_quiz_name(self, prompt: str) -> str:
         """Generate a concise quiz name from the prompt"""
         try:
-            response = self.client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
+            result = self._make_request(
                 messages=[
                     {
                         "role": "system", 
@@ -138,7 +141,7 @@ Ensure questions are appropriate for {difficulty_level} difficulty level."""
                 max_tokens=20
             )
             
-            quiz_name = response.choices[0].message.content.strip()
+            quiz_name = result["choices"][0]["message"]["content"].strip()
             return quiz_name if quiz_name else "General Quiz"
             
         except Exception as e:

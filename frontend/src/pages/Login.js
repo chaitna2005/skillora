@@ -1,21 +1,17 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { loginUser } from '../api/api';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { loginUser } from '../services/api';
+import '../styles/Auth.css';
 
-function Login({ onLogin }) {
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-  });
+const Login = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,15 +19,37 @@ function Login({ onLogin }) {
     setLoading(true);
 
     try {
-      const response = await loginUser(formData);
+      const response = await loginUser(username, password);
       
-      if (response.success) {
-        onLogin(response.user);
-      } else {
-        setError(response.message || 'Login failed');
+      // Check if login was successful
+      if (!response.success) {
+        setError(response.message || 'Invalid username or password');
+        setLoading(false);
+        return;
       }
+      
+      // Store user data
+      login(response.user);
+      navigate('/');
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
+      // Handle different error formats
+      let errorMessage = 'Invalid username or password';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        // If detail is a string, use it directly
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } 
+        // If detail is an array (validation errors), extract messages
+        else if (Array.isArray(detail)) {
+          errorMessage = detail.map(e => e.msg || e).join(', ');
+        }
+        // If detail is an object, try to get message
+        else if (typeof detail === 'object') {
+          errorMessage = detail.msg || detail.message || JSON.stringify(detail);
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -39,49 +57,55 @@ function Login({ onLogin }) {
 
   return (
     <div className="auth-container">
-      <div className="auth-box">
-        <h1>TestMyKnowledge</h1>
-        <h2>Login</h2>
+      <div className="auth-card">
+        <div className="auth-header">
+          <h1>📚 TestMyKnowledge</h1>
+          <h2>Welcome Back!</h2>
+          <p>Login to continue your learning journey</p>
+        </div>
 
         {error && <div className="error-message">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-            <label>Username</label>
+            <label htmlFor="username">Username</label>
             <input
               type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter your username"
+              required
+              autoFocus
             />
           </div>
 
           <div className="form-group">
-            <label>Password</label>
+            <label htmlFor="password">Password</label>
             <input
               type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
+              required
             />
           </div>
 
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button type="submit" className="auth-button" disabled={loading}>
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <p className="auth-link">
-          Don't have an account? <Link to="/register">Register here</Link>
-        </p>
+        <div className="auth-footer">
+          <p>
+            Don't have an account? <Link to="/register">Register here</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
-}
+};
 
 export default Login;
 

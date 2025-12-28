@@ -30,10 +30,15 @@ def start_test(
 ):
     """Start a new test attempt"""
     
+    # Handle quiz_assignment_id - convert 0 or None to None (NULL in DB)
+    assignment_id = test_data.quiz_assignment_id
+    if assignment_id is not None and assignment_id <= 0:
+        assignment_id = None
+    
     take_data = {
         "user_id": user_id,
         "quiz_id": test_data.quiz_id,
-        "quiz_assignment_id": test_data.quiz_assignment_id
+        "quiz_assignment_id": assignment_id
     }
     
     quiz_take = TestModel.create_quiz_take(cursor, take_data)
