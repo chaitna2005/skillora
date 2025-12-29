@@ -2,7 +2,7 @@
 Test Routes
 API endpoints for taking tests and viewing results
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from psycopg2.extras import RealDictCursor
 from typing import List
 from app.database import get_db
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/test", tags=["Test"])
 @router.post("/start", response_model=TestResponse, status_code=status.HTTP_201_CREATED)
 def start_test(
     test_data: TestStart,
-    user_id: int,
+    user_id: int = Query(..., description="User ID starting the test"),
     cursor: RealDictCursor = Depends(get_db)
 ):
     """Start a new test attempt"""
@@ -199,13 +199,14 @@ def get_test_result(uqt_id: int, cursor: RealDictCursor = Depends(get_db)):
             is_correct=is_correct
         ))
     
-    score_percentage = (quiz_take["total_correct"] / quiz_take["total_no_questions"] * 100)
+    total_questions = quiz_take.get("total_no_questions") or quiz_take.get("total_questions", 0)
+    score_percentage = (quiz_take["total_correct"] / total_questions * 100) if total_questions > 0 else 0
     feedback = TestService.get_feedback_message(quiz_take["result"], score_percentage)
     
     return TestResult(
         uqt_id=quiz_take["uqt_id"],
         quiz_name=quiz_take["quiz_name"],
-        total_questions=quiz_take["total_no_questions"],
+        total_questions=total_questions,
         total_correct=quiz_take["total_correct"],
         score_percentage=score_percentage,
         result=quiz_take["result"],
@@ -221,6 +222,10 @@ def get_user_tests(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get all tests taken by a user"""
     
     tests = TestModel.get_all_user_tests(cursor, user_id)
+    # Map total_no_questions to total_questions for schema compatibility
+    for test in tests:
+        if "total_no_questions" in test:
+            test["total_questions"] = test.pop("total_no_questions")
     return tests
 
 
@@ -229,6 +234,10 @@ def get_pending_tests(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get all pending (incomplete) tests for a user"""
     
     tests = TestModel.get_pending_tests(cursor, user_id)
+    # Map total_no_questions to total_questions for schema compatibility
+    for test in tests:
+        if "total_no_questions" in test:
+            test["total_questions"] = test.pop("total_no_questions")
     return tests
 
 
@@ -237,6 +246,10 @@ def get_completed_tests(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get all completed tests for a user"""
     
     tests = TestModel.get_completed_tests(cursor, user_id)
+    # Map total_no_questions to total_questions for schema compatibility
+    for test in tests:
+        if "total_no_questions" in test:
+            test["total_questions"] = test.pop("total_no_questions")
     return tests
 
 
@@ -259,8 +272,11 @@ def get_test_summary(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     
     average_score = total_score / scored_tests if scored_tests > 0 else None
     
-    # Get recent tests (last 5)
+    # Get recent tests (last 5) and map field names
     recent_tests = all_tests[:5]
+    for test in recent_tests:
+        if "total_no_questions" in test:
+            test["total_questions"] = test.pop("total_no_questions")
     
     return TestSummary(
         total_tests_taken=len(all_tests),

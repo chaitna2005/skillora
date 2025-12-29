@@ -52,7 +52,7 @@ const Results = () => {
     );
   }
 
-  const performance = getPerformanceLevel(result.result);
+  const performance = getPerformanceLevel(result.score_percentage);
 
   return (
     <div className="results-container">
@@ -63,7 +63,7 @@ const Results = () => {
 
       <div className="score-card">
         <div className={`score-circle ${performance.class}`}>
-          <div className="score-value">{result.result}%</div>
+          <div className="score-value">{result.score_percentage.toFixed(1)}%</div>
           <div className="score-label">Score</div>
         </div>
         
@@ -101,45 +101,54 @@ const Results = () => {
       <div className="questions-review">
         <h3>Detailed Review</h3>
         
-        {result.questions.map((question, index) => (
-          <div key={question.question_id} className="review-question">
+        {result.details && result.details.map((detail, index) => (
+          <div key={detail.question_id} className="review-question">
             <div className="review-question-header">
               <h4>Question {index + 1}</h4>
-              <span className={`answer-status ${question.is_correct ? 'correct' : 'incorrect'}`}>
-                {question.is_correct ? '✓ Correct' : '✗ Incorrect'}
+              <span className={`answer-status ${detail.is_correct ? 'correct' : 'incorrect'}`}>
+                {detail.is_correct ? '✓ Correct' : '✗ Incorrect'}
               </span>
             </div>
             
-            <p className="review-question-text">{question.question_text}</p>
+            <p className="review-question-text">{detail.question_text}</p>
             
             <div className="review-options">
-              {question.options.map(option => {
-                const isUserAnswer = question.user_answers.includes(option.question_option_id);
-                const isCorrectOption = option.is_correct;
+              <div className="review-answer-section">
+                <div className="answer-group">
+                  <h5>Your Answer:</h5>
+                  {detail.user_answers && detail.user_answers.length > 0 ? (
+                    detail.user_answers.map((answer, idx) => (
+                      <div key={idx} className={`review-option ${detail.is_correct ? 'correct-answer' : 'wrong-answer'} user-selected`}>
+                        <span className="option-indicator">{detail.is_correct ? '✓ ' : '✗ '}</span>
+                        <span className="option-text">{answer}</span>
+                        <span className="badge">Your Answer</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="review-option wrong-answer">
+                      <span className="option-indicator">✗ </span>
+                      <span className="option-text">No answer provided</span>
+                    </div>
+                  )}
+                </div>
                 
-                let optionClass = 'review-option';
-                if (isCorrectOption) {
-                  optionClass += ' correct-answer';
-                }
-                if (isUserAnswer && !isCorrectOption) {
-                  optionClass += ' wrong-answer';
-                }
-                if (isUserAnswer) {
-                  optionClass += ' user-selected';
-                }
-                
-                return (
-                  <div key={option.question_option_id} className={optionClass}>
-                    <span className="option-indicator">
-                      {isCorrectOption && '✓ '}
-                      {isUserAnswer && !isCorrectOption && '✗ '}
-                    </span>
-                    <span className="option-text">{option.option_text}</span>
-                    {isUserAnswer && <span className="badge">Your Answer</span>}
-                    {isCorrectOption && <span className="badge correct">Correct Answer</span>}
-                  </div>
-                );
-              })}
+                <div className="answer-group">
+                  <h5>Correct Answer:</h5>
+                  {detail.correct_answers && detail.correct_answers.length > 0 ? (
+                    detail.correct_answers.map((answer, idx) => (
+                      <div key={idx} className="review-option correct-answer">
+                        <span className="option-indicator">✓ </span>
+                        <span className="option-text">{answer}</span>
+                        <span className="badge correct">Correct Answer</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="review-option">
+                      <span className="option-text">No correct answer</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         ))}

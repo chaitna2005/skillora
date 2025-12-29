@@ -89,15 +89,15 @@ const TakeTest = () => {
     try {
       setSubmitting(true);
       
-      // Format answers for API
+      // Format answers for API - group by question_id with question_option_ids array
       const formattedAnswers = [];
       Object.keys(answers).forEach(questionId => {
-        answers[questionId].forEach(optionId => {
+        if (answers[questionId] && answers[questionId].length > 0) {
           formattedAnswers.push({
             question_id: parseInt(questionId),
-            question_option_id: optionId
+            question_option_ids: answers[questionId].map(id => parseInt(id))
           });
-        });
+        }
       });
 
       const submitData = {

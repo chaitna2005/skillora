@@ -2,7 +2,7 @@
 Quiz Routes
 API endpoints for quiz creation and management
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from psycopg2.extras import RealDictCursor
 from typing import List
 from app.database import get_db
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/quiz", tags=["Quiz"])
 @router.post("/create", response_model=QuizResponse, status_code=status.HTTP_201_CREATED)
 def create_quiz(
     quiz_data: QuizCreate,
-    user_id: int,
+    user_id: int = Query(..., description="User ID creating the quiz"),
     cursor: RealDictCursor = Depends(get_db)
 ):
     """Create a new quiz with AI-generated questions"""
@@ -109,7 +109,7 @@ def get_quiz_with_answers(quiz_id: int, cursor: RealDictCursor = Depends(get_db)
 @router.post("/assign", response_model=QuizAssignmentResponse, status_code=status.HTTP_201_CREATED)
 def assign_quiz(
     assignment: QuizAssignmentCreate,
-    assigned_by: int,
+    assigned_by: int = Query(..., description="Teacher ID assigning the quiz"),
     cursor: RealDictCursor = Depends(get_db)
 ):
     """Assign a quiz to a student"""

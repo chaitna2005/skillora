@@ -150,3 +150,4 @@ Ensure questions are appropriate for {difficulty_level} difficulty level."""
             words = prompt.split()[:3]
             return " ".join(words).title() + " Quiz"
 
+

@@ -56,10 +56,16 @@ export const assignQuiz = async (teacherId, assignmentData) => {
 
 // Test Management
 export const startTest = async (userId, quizId, assignmentId = null) => {
-  const url = assignmentId 
-    ? `/test/start?user_id=${userId}&quiz_id=${quizId}&quiz_assignment_id=${assignmentId}`
-    : `/test/start?user_id=${userId}&quiz_id=${quizId}`;
-  const response = await api.post(url);
+  // Convert assignmentId to integer or null
+  const assignmentIdInt = assignmentId ? parseInt(assignmentId, 10) : null;
+  
+  const response = await api.post(
+    `/test/start?user_id=${userId}`,
+    {
+      quiz_id: parseInt(quizId, 10),
+      quiz_assignment_id: assignmentIdInt
+    }
+  );
   return response.data;
 };
 

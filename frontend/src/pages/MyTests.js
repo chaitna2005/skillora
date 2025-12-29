@@ -74,7 +74,7 @@ const MyTests = () => {
           <div className="summary-card">
             <div className="summary-icon">⭐</div>
             <div className="summary-content">
-              <h3>{summary.average_score.toFixed(1)}%</h3>
+              <h3>{summary.average_score !== null ? summary.average_score.toFixed(1) : 'N/A'}%</h3>
               <p>Average Score</p>
             </div>
           </div>
