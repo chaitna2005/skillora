@@ -99,5 +99,15 @@ export const getTestSummary = async (userId) => {
   return response.data;
 };
 
+export const deletePendingTest = async (userId, uqtId) => {
+  const response = await api.delete(`/test/pending/${uqtId}?user_id=${userId}`);
+  return response.data;
+};
+
+export const deleteQuiz = async (userId, quizId) => {
+  const response = await api.delete(`/quiz/${quizId}?user_id=${userId}`);
+  return response.data;
+};
+
 export default api;
 

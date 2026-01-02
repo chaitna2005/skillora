@@ -20,12 +20,20 @@ const TakeTest = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Reset state when quizId changes (e.g., when retaking)
+    setQuiz(null);
+    setUqtId(null);
+    setCurrentQuestionIndex(0);
+    setAnswers({});
+    setError('');
+    setSubmitting(false);
     loadQuiz();
   }, [quizId]);
 
   const loadQuiz = async () => {
     try {
       setLoading(true);
+      setError('');
       const quizData = await getQuiz(quizId);
       setQuiz(quizData);
       
@@ -204,7 +212,7 @@ const TakeTest = () => {
         <p className="question-text">{currentQuestion.question_text}</p>
 
         <div className="options-container">
-          {currentQuestion.options.map(option => (
+          {currentQuestion.options.map((option, index) => (
             <label
               key={option.question_option_id}
               className={`option-label ${
@@ -222,6 +230,7 @@ const TakeTest = () => {
                   isMultiple
                 )}
               />
+              <span className="option-number">{index + 1}.</span>
               <span className="option-text">{option.option_text}</span>
             </label>
           ))}

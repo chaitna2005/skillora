@@ -111,9 +111,9 @@ class TestModel:
     
     @staticmethod
     def get_pending_tests(cursor: RealDictCursor, user_id: int) -> List[Dict]:
-        """Get all pending (incomplete) tests for a user"""
+        """Get all pending (incomplete) tests for a user - only tests that were actually started and have answers"""
         query = """
-            SELECT 
+            SELECT DISTINCT
                 uqt.uqt_id,
                 uqt.user_id,
                 uqt.start_time,
@@ -123,11 +123,30 @@ class TestModel:
                 q.difficulty_level
             FROM "User_Quiz_Take" uqt
             JOIN "Quiz" q ON uqt.quiz_id = q.quiz_id
-            WHERE uqt.user_id = %s AND uqt.completed_time IS NULL
+            WHERE uqt.user_id = %s 
+                AND uqt.completed_time IS NULL
+                AND uqt.start_time IS NOT NULL
+                AND EXISTS (
+                    SELECT 1 
+                    FROM "Quiz_Take_Question_Answers" qa 
+                    WHERE qa.uqt_id = uqt.uqt_id
+                )
             ORDER BY uqt.start_time DESC
         """
         cursor.execute(query, (user_id,))
         return [dict(row) for row in cursor.fetchall()]
+    
+    @staticmethod
+    def delete_quiz_take(cursor: RealDictCursor, uqt_id: int, user_id: int) -> bool:
+        """Delete a quiz take (pending test) - only if not completed and belongs to user"""
+        query = """
+            DELETE FROM "User_Quiz_Take"
+            WHERE uqt_id = %s 
+                AND user_id = %s
+                AND completed_time IS NULL
+        """
+        cursor.execute(query, (uqt_id, user_id))
+        return cursor.rowcount > 0
     
     @staticmethod
     def get_completed_tests(cursor: RealDictCursor, user_id: int) -> List[Dict]:

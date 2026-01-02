@@ -61,6 +61,39 @@ def get_user_quizzes(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     return quizzes
 
 
+@router.delete("/{quiz_id}")
+def delete_quiz(
+    quiz_id: int,
+    user_id: int = Query(..., description="User ID deleting the quiz"),
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Delete a quiz"""
+    
+    # Verify quiz exists and belongs to user
+    quiz = QuizModel.get_quiz_by_id(cursor, quiz_id)
+    if not quiz:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Quiz not found"
+        )
+    
+    if quiz["user_id"] != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own quizzes"
+        )
+    
+    deleted = QuizModel.delete_quiz(cursor, quiz_id, user_id)
+    
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete quiz"
+        )
+    
+    return {"message": "Quiz deleted successfully"}
+
+
 @router.get("/assigned/{user_id}")
 def get_assigned_quizzes(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get all quizzes assigned to a student"""

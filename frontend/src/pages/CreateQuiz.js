@@ -8,7 +8,6 @@ const CreateQuiz = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    quiz_name: '',
     prompt: '',
     total_no_questions: 5,
     difficulty_level: 'MEDIUM'
@@ -52,27 +51,12 @@ const CreateQuiz = () => {
       <div className="create-quiz-card">
         <div className="page-header">
           <h1>✨ Create New Quiz</h1>
-          <p>Let AI generate custom questions for you</p>
+          <p>AI will generate a quiz title and custom questions for you</p>
         </div>
 
         {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit} className="create-quiz-form">
-          <div className="form-group">
-            <label htmlFor="quiz_name">
-              Quiz Name <span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              id="quiz_name"
-              name="quiz_name"
-              value={formData.quiz_name}
-              onChange={handleChange}
-              placeholder="e.g., History Quiz, Python Basics"
-              required
-            />
-          </div>
-
           <div className="form-group">
             <label htmlFor="prompt">
               Quiz Prompt <span className="required">*</span>
@@ -165,7 +149,7 @@ const CreateQuiz = () => {
 
         {loading && (
           <div className="loading-info">
-            <p>⏳ AI is generating your questions... This may take a moment.</p>
+            <p>⏳ AI is generating your quiz title and questions... This may take a moment.</p>
           </div>
         )}
       </div>

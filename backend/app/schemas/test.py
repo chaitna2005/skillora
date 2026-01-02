@@ -45,6 +45,7 @@ class TestResultDetail(BaseModel):
 
 class TestResult(BaseModel):
     uqt_id: int
+    quiz_id: int
     quiz_name: str
     total_questions: int
     total_correct: int

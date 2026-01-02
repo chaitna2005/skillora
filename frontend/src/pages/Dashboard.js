@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUserQuizzes, getAssignedQuizzes, getPendingTests, getCompletedTests } from '../services/api';
+import { getUserQuizzes, getAssignedQuizzes, getPendingTests, getCompletedTests, deletePendingTest, deleteQuiz } from '../services/api';
 import '../styles/Dashboard.css';
 
 const Dashboard = () => {
@@ -43,8 +43,38 @@ const Dashboard = () => {
     navigate(`/take-test/${quizId}${assignmentId ? `?assignment=${assignmentId}` : ''}`);
   };
 
+  const handleViewQuiz = (quizId) => {
+    navigate(`/view-quiz/${quizId}`);
+  };
+
   const handleViewResult = (uqtId) => {
     navigate(`/results/${uqtId}`);
+  };
+
+  const handleDeleteQuiz = async (quizId, e) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this quiz?')) {
+      try {
+        await deleteQuiz(user.user_id, quizId);
+        setMyQuizzes(myQuizzes.filter(q => q.quiz_id !== quizId));
+      } catch (error) {
+        alert('Failed to delete quiz. Please try again.');
+        console.error(error);
+      }
+    }
+  };
+
+  const handleDeletePendingTest = async (uqtId, e) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this pending test?')) {
+      try {
+        await deletePendingTest(user.user_id, uqtId);
+        setPendingTests(pendingTests.filter(t => t.uqt_id !== uqtId));
+      } catch (error) {
+        alert('Failed to delete pending test. Please try again.');
+        console.error(error);
+      }
+    }
   };
 
   const formatDate = (dateString) => {
@@ -55,38 +85,88 @@ const Dashboard = () => {
     });
   };
 
-  const QuizCard = ({ quiz, onTakeTest, showTakeButton = true }) => (
+  const QuizCard = ({ quiz, onTakeTest, onViewQuiz, onDelete, showTakeButton = true }) => (
     <div className="quiz-card">
       <div className="quiz-card-header">
         <h3>{quiz.quiz_name}</h3>
-        <span className={`difficulty-badge ${quiz.difficulty_level.toLowerCase()}`}>
-          {quiz.difficulty_level}
-        </span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span className={`difficulty-badge ${quiz.difficulty_level.toLowerCase()}`}>
+            {quiz.difficulty_level}
+          </span>
+          {onDelete && (
+            <button 
+              onClick={(e) => onDelete(quiz.quiz_id, e)} 
+              className="delete-btn"
+              title="Delete quiz"
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontSize: '18px',
+                padding: '4px 8px'
+              }}
+            >
+              🗑️
+            </button>
+          )}
+        </div>
       </div>
-      <p className="quiz-prompt">{quiz.prompt}</p>
       <div className="quiz-card-footer">
         <div className="quiz-info">
           <span>📝 {quiz.total_no_questions} questions</span>
           <span>📅 {formatDate(quiz.created_date)}</span>
         </div>
-        {showTakeButton && (
-          <button onClick={onTakeTest} className="take-test-btn">
-            Take Test
-          </button>
-        )}
+        <div className="quiz-actions" style={{ display: 'flex', gap: '10px' }}>
+          {onViewQuiz && (
+            <button onClick={() => onViewQuiz(quiz.quiz_id)} className="view-quiz-btn" style={{
+              padding: '8px 16px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}>
+              View Quiz
+            </button>
+          )}
+          {showTakeButton && (
+            <button onClick={onTakeTest} className="take-test-btn">
+              Take Test
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 
-  const TestCard = ({ test, onViewResult, isPending }) => (
+  const TestCard = ({ test, onViewResult, onDelete, isPending }) => (
     <div className="test-card">
       <div className="test-card-header">
         <h3>{test.quiz_name}</h3>
-        {!isPending && (
-          <span className={`score-badge ${test.result >= 70 ? 'pass' : 'fail'}`}>
-            {test.result}%
-          </span>
-        )}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {!isPending && (
+            <span className={`score-badge ${test.result >= 70 ? 'pass' : 'fail'}`}>
+              {test.result}%
+            </span>
+          )}
+          {isPending && onDelete && (
+            <button 
+              onClick={(e) => onDelete(test.uqt_id, e)} 
+              className="delete-btn"
+              title="Delete pending test"
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontSize: '18px',
+                padding: '4px 8px'
+              }}
+            >
+              🗑️
+            </button>
+          )}
+        </div>
       </div>
       <div className="test-card-body">
         {isPending ? (
@@ -200,6 +280,8 @@ const Dashboard = () => {
                     key={quiz.quiz_id}
                     quiz={quiz}
                     onTakeTest={() => handleTakeTest(quiz.quiz_id)}
+                    onViewQuiz={handleViewQuiz}
+                    onDelete={handleDeleteQuiz}
                   />
                 ))
               )}
@@ -218,6 +300,7 @@ const Dashboard = () => {
                     key={quiz.quiz_id}
                     quiz={quiz}
                     onTakeTest={() => handleTakeTest(quiz.quiz_id, quiz.quiz_assignment_id)}
+                    onViewQuiz={handleViewQuiz}
                   />
                 ))
               )}
@@ -233,10 +316,11 @@ const Dashboard = () => {
               ) : (
                 pendingTests.map(test => (
                   <TestCard
-                    key={test.quiz_id}
+                    key={test.uqt_id}
                     test={test}
                     isPending={true}
                     onViewResult={() => handleTakeTest(test.quiz_id, test.quiz_assignment_id)}
+                    onDelete={handleDeletePendingTest}
                   />
                 ))
               )}

@@ -68,6 +68,16 @@ class QuizModel:
         return [dict(row) for row in cursor.fetchall()]
     
     @staticmethod
+    def delete_quiz(cursor: RealDictCursor, quiz_id: int, user_id: int) -> bool:
+        """Delete a quiz - only if created by the user"""
+        query = """
+            DELETE FROM "Quiz"
+            WHERE quiz_id = %s AND user_id = %s
+        """
+        cursor.execute(query, (quiz_id, user_id))
+        return cursor.rowcount > 0
+    
+    @staticmethod
     def create_quiz_assignment(cursor: RealDictCursor, assignment_data: Dict[str, Any]) -> Optional[Dict]:
         """Assign a quiz to a user"""
         query = """

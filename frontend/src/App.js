@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -9,6 +9,7 @@ import CreateQuiz from './pages/CreateQuiz';
 import TakeTest from './pages/TakeTest';
 import Results from './pages/Results';
 import MyTests from './pages/MyTests';
+import ViewQuiz from './pages/ViewQuiz';
 import './App.css';
 
 // Protected Route Component
@@ -45,7 +46,7 @@ function AppContent() {
   return (
     <Router>
       <div className="app">
-        <Navbar />
+        <Sidebar />
         <div className="main-content">
           <Routes>
             {/* Public Routes */}
@@ -69,6 +70,11 @@ function AppContent() {
             <Route path="/create-quiz" element={
               <ProtectedRoute>
                 <CreateQuiz />
+              </ProtectedRoute>
+            } />
+            <Route path="/view-quiz/:quizId" element={
+              <ProtectedRoute>
+                <ViewQuiz />
               </ProtectedRoute>
             } />
             <Route path="/take-test/:quizId" element={

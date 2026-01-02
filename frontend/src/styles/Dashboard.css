@@ -29,17 +29,35 @@
 .stat-card {
   background: var(--card-background);
   padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  transition: transform 0.3s, box-shadow 0.3s;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(99, 102, 241, 0.1);
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-xl);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.stat-card:nth-child(1) .stat-icon {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+}
+
+.stat-card:nth-child(2) .stat-icon {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.stat-card:nth-child(3) .stat-icon {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.stat-card:nth-child(4) .stat-icon {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
 }
 
 .stat-icon {
@@ -66,15 +84,16 @@
 
 .tabs-container {
   background: var(--card-background);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
+  border: 1px solid rgba(99, 102, 241, 0.1);
 }
 
 .tabs {
   display: flex;
   border-bottom: 2px solid var(--border-color);
-  background-color: #f9fafb;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   overflow-x: auto;
 }
 
@@ -100,7 +119,8 @@
 .tab.active {
   color: var(--primary-color);
   border-bottom-color: var(--primary-color);
-  background-color: white;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  font-weight: 700;
 }
 
 .tab-content {
@@ -116,18 +136,37 @@
 }
 
 .quiz-card {
-  background: white;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 1.5rem;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
   cursor: pointer;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.quiz-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
 }
 
 .quiz-card:hover {
   border-color: var(--primary-color);
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-xl);
+}
+
+.quiz-card:hover::before {
+  transform: scaleX(1);
 }
 
 .quiz-card-header {
@@ -154,18 +193,21 @@
 }
 
 .difficulty-badge.easy {
-  background-color: #d1fae5;
-  color: #065f46;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .difficulty-badge.medium {
-  background-color: #fed7aa;
-  color: #92400e;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
 .difficulty-badge.hard {
-  background-color: #fecaca;
-  color: #991b1b;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 .quiz-prompt {
@@ -191,32 +233,54 @@
 }
 
 .take-test-btn {
-  padding: 0.5rem 1.25rem;
-  background-color: var(--primary-color);
+  padding: 0.6rem 1.5rem;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .take-test-btn:hover {
-  background-color: var(--primary-hover);
-  transform: scale(1.05);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
 }
 
 .test-card {
-  background: white;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 1.5rem;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.test-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
 }
 
 .test-card:hover {
   border-color: var(--primary-color);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-xl);
+}
+
+.test-card:hover::before {
+  transform: scaleX(1);
 }
 
 .test-card-header {
@@ -239,13 +303,15 @@
 }
 
 .score-badge.pass {
-  background-color: #d1fae5;
-  color: #065f46;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
 .score-badge.fail {
-  background-color: #fecaca;
-  color: #991b1b;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 .test-card-body {
@@ -273,17 +339,20 @@
 .view-btn {
   width: 100%;
   padding: 0.75rem;
-  background-color: var(--primary-color);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .view-btn:hover {
-  background-color: var(--primary-hover);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
 }
 
 .empty-state {
