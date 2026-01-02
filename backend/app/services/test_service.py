@@ -445,8 +445,11 @@ class TestService:
                 total_correct += 1
             
             # Save each selected option as an answer
-            # CRITICAL: Use the computed is_correct value, not option ID membership
-            # This ensures saved flags match the evaluation logic
+            # CRITICAL: Delete existing answers for this question first (in case they were saved incrementally)
+            # Then save with computed correctness values
+            TestModel.delete_answers_for_question(cursor, uqt_id, question_id)
+            
+            # Save answers with computed correctness
             for option_id in user_option_ids:
                 # For RADIO questions, all selected options have the same correctness
                 # For CHECKLIST, check if this specific option is correct

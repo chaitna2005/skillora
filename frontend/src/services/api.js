@@ -79,6 +79,19 @@ export const getTestResult = async (uqtId) => {
   return response.data;
 };
 
+export const getTestAnswers = async (uqtId) => {
+  const response = await api.get(`/test/answers/${uqtId}`);
+  return response.data;
+};
+
+export const saveAnswer = async (uqtId, questionId, optionIds) => {
+  const response = await api.post(`/test/save-answer/${uqtId}`, {
+    question_id: questionId,
+    question_option_ids: optionIds
+  });
+  return response.data;
+};
+
 export const getUserTests = async (userId) => {
   const response = await api.get(`/test/user/${userId}`);
   return response.data;
@@ -106,6 +119,48 @@ export const deletePendingTest = async (userId, uqtId) => {
 
 export const deleteQuiz = async (userId, quizId) => {
   const response = await api.delete(`/quiz/${quizId}?user_id=${userId}`);
+  return response.data;
+};
+
+// Bulk delete APIs
+export const deleteAllPendingTests = async (userId) => {
+  const response = await api.delete(`/test/pending/all?user_id=${userId}`);
+  return response.data;
+};
+
+export const deleteAllCompletedTests = async (userId) => {
+  const response = await api.delete(`/test/completed/all?user_id=${userId}`);
+  return response.data;
+};
+
+export const deleteAllUserQuizzes = async (userId) => {
+  const response = await api.delete(`/quiz/user/${userId}/all`);
+  return response.data;
+};
+
+export const deleteAllAssignedQuizzes = async (userId) => {
+  const response = await api.delete(`/quiz/assigned/${userId}/all`);
+  return response.data;
+};
+
+// Bulk delete with IDs APIs
+export const bulkDeletePendingTests = async (userId, ids) => {
+  const response = await api.post(`/test/pending/bulk-delete?user_id=${userId}`, { ids });
+  return response.data;
+};
+
+export const bulkDeleteCompletedTests = async (userId, ids) => {
+  const response = await api.post(`/test/completed/bulk-delete?user_id=${userId}`, { ids });
+  return response.data;
+};
+
+export const bulkDeleteQuizzes = async (userId, ids) => {
+  const response = await api.post(`/quiz/bulk-delete?user_id=${userId}`, { ids });
+  return response.data;
+};
+
+export const bulkDeleteAssignedQuizzes = async (userId, ids) => {
+  const response = await api.post(`/quiz/assigned/bulk-delete?user_id=${userId}`, { ids });
   return response.data;
 };
 

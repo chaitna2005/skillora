@@ -10,10 +10,12 @@ from app.schemas.quiz import (
     QuizCreate, 
     QuizResponse, 
     QuizAssignmentCreate,
-    QuizAssignmentResponse
+    QuizAssignmentResponse,
+    BulkDeleteRequest
 )
 from app.models.quiz import QuizModel
 from app.models.question import QuestionModel
+from app.models.test import TestModel
 from app.services.quiz_service import QuizService
 
 
@@ -57,7 +59,11 @@ def create_quiz(
 def get_user_quizzes(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get all quizzes created by a user"""
     
+    print(f"[API] get_user_quizzes called with user_id: {user_id}")
     quizzes = QuizModel.get_quizzes_by_user(cursor, user_id)
+    print(f"[API] get_user_quizzes returned {len(quizzes)} quizzes")
+    if quizzes:
+        print(f"[API] First quiz sample: {quizzes[0] if quizzes else 'None'}")
     return quizzes
 
 
@@ -94,11 +100,91 @@ def delete_quiz(
     return {"message": "Quiz deleted successfully"}
 
 
+@router.delete("/user/{user_id}/all")
+def delete_all_user_quizzes(
+    user_id: int,
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Delete all quizzes created by a user"""
+    
+    deleted_count = QuizModel.delete_all_user_quizzes(cursor, user_id)
+    
+    return {
+        "message": f"Successfully deleted {deleted_count} quiz(zes)",
+        "deleted_count": deleted_count
+    }
+
+
+@router.delete("/assigned/{user_id}/all")
+def delete_all_assigned_quizzes(
+    user_id: int,
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Delete all quiz assignments for a user (unassign all quizzes)"""
+    
+    deleted_count = QuizModel.delete_all_assigned_quizzes(cursor, user_id)
+    
+    return {
+        "message": f"Successfully unassigned {deleted_count} quiz(zes)",
+        "deleted_count": deleted_count
+    }
+
+
+@router.post("/bulk-delete")
+def bulk_delete_quizzes(
+    request: BulkDeleteRequest,
+    user_id: int = Query(..., description="User ID deleting quizzes"),
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Bulk delete specific quizzes by IDs"""
+    
+    if not request.ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No IDs provided"
+        )
+    
+    deleted_count = QuizModel.delete_quizzes_by_ids(cursor, request.ids, user_id)
+    
+    return {
+        "message": f"Successfully deleted {deleted_count} quiz(zes)",
+        "deleted_count": deleted_count,
+        "requested_count": len(request.ids)
+    }
+
+
+@router.post("/assigned/bulk-delete")
+def bulk_delete_assigned_quizzes(
+    request: BulkDeleteRequest,
+    user_id: int = Query(..., description="User ID unassigning quizzes"),
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Bulk unassign specific quizzes by assignment IDs"""
+    
+    if not request.ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No IDs provided"
+        )
+    
+    deleted_count = QuizModel.delete_assigned_quizzes_by_ids(cursor, request.ids, user_id)
+    
+    return {
+        "message": f"Successfully unassigned {deleted_count} quiz(zes)",
+        "deleted_count": deleted_count,
+        "requested_count": len(request.ids)
+    }
+
+
 @router.get("/assigned/{user_id}")
 def get_assigned_quizzes(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get all quizzes assigned to a student"""
     
+    print(f"[API] get_assigned_quizzes called with user_id: {user_id}")
     quizzes = QuizModel.get_assigned_quizzes(cursor, user_id)
+    print(f"[API] get_assigned_quizzes returned {len(quizzes)} quizzes")
+    if quizzes:
+        print(f"[API] First assigned quiz sample: {quizzes[0] if quizzes else 'None'}")
     return quizzes
 
 
@@ -162,6 +248,26 @@ def assign_quiz(
         "due_date": assignment.due_date
     }
     
+    # Create the assignment
     result = QuizModel.create_quiz_assignment(cursor, assignment_data)
+    
+    # Create a NOT_STARTED test record for this assignment
+    # Check if test record already exists
+    existing_test = TestModel.get_pending_test_for_quiz(
+        cursor,
+        assignment.user_id,
+        assignment.quiz_id,
+        result["quiz_assignment_id"]
+    )
+    
+    if not existing_test:
+        # Create NOT_STARTED test record
+        take_data = {
+            "user_id": assignment.user_id,
+            "quiz_id": assignment.quiz_id,
+            "quiz_assignment_id": result["quiz_assignment_id"]
+        }
+        TestModel.create_quiz_take(cursor, take_data, set_start_time=False)
+    
     return result
 

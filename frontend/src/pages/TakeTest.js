@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getQuiz, startTest, submitTest } from '../services/api';
+import { getQuiz, startTest, submitTest, getTestAnswers, saveAnswer } from '../services/api';
 import '../styles/TakeTest.css';
 
 const TakeTest = () => {
@@ -30,6 +30,61 @@ const TakeTest = () => {
     loadQuiz();
   }, [quizId]);
 
+  // Auto-save answers when they change (with debounce)
+  useEffect(() => {
+    if (!uqtId || !quiz || Object.keys(answers).length === 0) {
+      return;
+    }
+
+    // Debounce: save answers 1 second after user stops changing them
+    const timeoutId = setTimeout(() => {
+      // Save current question's answer automatically
+      const currentQuestion = quiz.questions[currentQuestionIndex];
+      if (currentQuestion) {
+        const currentAnswers = answers[currentQuestion.question_id] || [];
+        if (currentAnswers.length > 0) {
+          saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)))
+            .catch(err => {
+              // Silently fail - answers will be saved on navigation or submit
+              console.error('Auto-save failed:', err);
+            });
+        }
+      }
+    }, 1000); // 1 second debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [answers, uqtId, quiz, currentQuestionIndex]);
+
+  // Save answers when component unmounts (user navigates away)
+  useEffect(() => {
+    return () => {
+      // Cleanup: save current answer when component unmounts
+      if (uqtId && quiz && !submitting) {
+        const currentQuestion = quiz.questions[currentQuestionIndex];
+        if (currentQuestion) {
+          const currentAnswers = answers[currentQuestion.question_id] || [];
+          if (currentAnswers.length > 0) {
+            // Use sendBeacon for reliability during navigation
+            const answerData = JSON.stringify({
+              question_id: currentQuestion.question_id,
+              question_option_ids: currentAnswers.map(id => parseInt(id))
+            });
+            
+            // Try to save synchronously using fetch with keepalive
+            fetch(`/api/test/save-answer/${uqtId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: answerData,
+              keepalive: true
+            }).catch(() => {
+              // Ignore errors - answers are already saved on navigation
+            });
+          }
+        }
+      }
+    };
+  }, [uqtId, quiz, answers, currentQuestionIndex, submitting]);
+
   const loadQuiz = async () => {
     try {
       setLoading(true);
@@ -37,7 +92,10 @@ const TakeTest = () => {
       const quizData = await getQuiz(quizId);
       setQuiz(quizData);
       
-      // Start the test
+      // Start or resume the test
+      // CRITICAL: Backend behavior:
+      // - If assignmentId exists (Pending Tests): Resumes existing test if available
+      // - If assignmentId is NULL (My Quizzes): ALWAYS creates new test, never resumes
       const testData = await startTest(user.user_id, quizId, assignmentId);
       setUqtId(testData.uqt_id);
       
@@ -46,6 +104,33 @@ const TakeTest = () => {
       quizData.questions.forEach(q => {
         initialAnswers[q.question_id] = [];
       });
+      
+      // CRITICAL: Load existing answers ONLY when coming from Pending Tests (assignmentId exists)
+      // My Quizzes (assignmentId is NULL) must NEVER load existing answers - always start fresh
+      // This enforces strict separation: My Quizzes = START, Pending Tests = CONTINUE
+      if (assignmentId) {
+        // Coming from Pending Tests - check if test is IN_PROGRESS and load saved answers
+        const testStatus = testData.status || (testData.start_time && !testData.completed_time ? 'IN_PROGRESS' : 'NOT_STARTED');
+        
+        if (testStatus === 'IN_PROGRESS') {
+          try {
+            const existingAnswers = await getTestAnswers(testData.uqt_id);
+            if (existingAnswers && existingAnswers.answers) {
+              // Merge existing answers into initial answers
+              Object.keys(existingAnswers.answers).forEach(questionId => {
+                const questionIdInt = parseInt(questionId);
+                if (existingAnswers.answers[questionId] && existingAnswers.answers[questionId].length > 0) {
+                  initialAnswers[questionIdInt] = existingAnswers.answers[questionId].map(id => parseInt(id));
+                }
+              });
+            }
+          } catch (err) {
+            // If no existing answers, that's fine - start fresh
+          }
+        }
+      }
+      // If assignmentId is NULL (My Quizzes), always start with empty answers - no continuation
+      
       setAnswers(initialAnswers);
     } catch (err) {
       setError('Failed to load quiz. Please try again.');
@@ -97,6 +182,21 @@ const TakeTest = () => {
     try {
       setSubmitting(true);
       
+      // Save current question's answer before submitting (if on a question with answers)
+      if (uqtId && quiz) {
+        const currentQuestion = quiz.questions[currentQuestionIndex];
+        const currentAnswers = answers[currentQuestion.question_id] || [];
+        
+        if (currentAnswers.length > 0) {
+          try {
+            await saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)));
+          } catch (err) {
+            console.error('Failed to save current answer before submit:', err);
+            // Continue with submission even if save fails
+          }
+        }
+      }
+      
       // Format answers for API - group by question_id with question_option_ids array
       const formattedAnswers = [];
       Object.keys(answers).forEach(questionId => {
@@ -127,13 +227,44 @@ const TakeTest = () => {
     setCurrentQuestionIndex(index);
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = async () => {
+    // Save current question's answer before moving to next
+    if (uqtId && quiz) {
+      const currentQuestion = quiz.questions[currentQuestionIndex];
+      const currentAnswers = answers[currentQuestion.question_id] || [];
+      
+      if (currentAnswers.length > 0) {
+        try {
+          await saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)));
+          console.log(`Saved answer for question ${currentQuestion.question_id}`);
+        } catch (err) {
+          console.error('Failed to save answer:', err);
+          // Don't block navigation if save fails - user can still continue
+        }
+      }
+    }
+    
+    // Move to next question
     if (currentQuestionIndex < quiz.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
-  const previousQuestion = () => {
+  const previousQuestion = async () => {
+    // Save current question's answer before moving to previous
+    if (uqtId && quiz) {
+      const currentQuestion = quiz.questions[currentQuestionIndex];
+      const currentAnswers = answers[currentQuestion.question_id] || [];
+      
+      if (currentAnswers.length > 0) {
+        try {
+          await saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)));
+        } catch (err) {
+          // Don't block navigation if save fails
+        }
+      }
+    }
+    
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }

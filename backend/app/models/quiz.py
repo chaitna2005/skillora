@@ -41,8 +41,13 @@ class QuizModel:
             WHERE user_id = %s
             ORDER BY created_date DESC
         """
+        print(f"[MODEL] get_quizzes_by_user querying with user_id: {user_id}")
         cursor.execute(query, (user_id,))
-        return [dict(row) for row in cursor.fetchall()]
+        results = [dict(row) for row in cursor.fetchall()]
+        print(f"[MODEL] get_quizzes_by_user found {len(results)} quizzes")
+        if results:
+            print(f"[MODEL] Sample quiz: {results[0]}")
+        return results
     
     @staticmethod
     def get_assigned_quizzes(cursor: RealDictCursor, user_id: int) -> List[Dict]:
@@ -64,8 +69,13 @@ class QuizModel:
             WHERE qa.user_id = %s
             ORDER BY qa.assign_date DESC
         """
+        print(f"[MODEL] get_assigned_quizzes querying with user_id: {user_id}")
         cursor.execute(query, (user_id,))
-        return [dict(row) for row in cursor.fetchall()]
+        results = [dict(row) for row in cursor.fetchall()]
+        print(f"[MODEL] get_assigned_quizzes found {len(results)} assigned quizzes")
+        if results:
+            print(f"[MODEL] Sample assigned quiz: {results[0]}")
+        return results
     
     @staticmethod
     def delete_quiz(cursor: RealDictCursor, quiz_id: int, user_id: int) -> bool:
@@ -87,4 +97,56 @@ class QuizModel:
         """
         cursor.execute(query, assignment_data)
         return dict(cursor.fetchone())
+    
+    @staticmethod
+    def delete_all_user_quizzes(cursor: RealDictCursor, user_id: int) -> int:
+        """Delete all quizzes created by a user"""
+        query = """
+            DELETE FROM "Quiz"
+            WHERE user_id = %s
+        """
+        cursor.execute(query, (user_id,))
+        return cursor.rowcount
+    
+    @staticmethod
+    def delete_all_assigned_quizzes(cursor: RealDictCursor, user_id: int) -> int:
+        """Delete all quiz assignments for a user (unassign all quizzes)"""
+        query = """
+            DELETE FROM "Quiz_Assignment"
+            WHERE user_id = %s
+        """
+        cursor.execute(query, (user_id,))
+        return cursor.rowcount
+    
+    @staticmethod
+    def delete_quizzes_by_ids(cursor: RealDictCursor, quiz_ids: List[int], user_id: int) -> int:
+        """Delete specific quizzes by IDs - only if they belong to user"""
+        if not quiz_ids:
+            return 0
+        
+        # Use parameterized query with tuple for IN clause
+        placeholders = ','.join(['%s'] * len(quiz_ids))
+        query = f"""
+            DELETE FROM "Quiz"
+            WHERE quiz_id IN ({placeholders})
+                AND user_id = %s
+        """
+        cursor.execute(query, tuple(quiz_ids) + (user_id,))
+        return cursor.rowcount
+    
+    @staticmethod
+    def delete_assigned_quizzes_by_ids(cursor: RealDictCursor, assignment_ids: List[int], user_id: int) -> int:
+        """Delete specific quiz assignments by IDs - only if they belong to user"""
+        if not assignment_ids:
+            return 0
+        
+        # Use parameterized query with tuple for IN clause
+        placeholders = ','.join(['%s'] * len(assignment_ids))
+        query = f"""
+            DELETE FROM "Quiz_Assignment"
+            WHERE quiz_assignment_id IN ({placeholders})
+                AND user_id = %s
+        """
+        cursor.execute(query, tuple(assignment_ids) + (user_id,))
+        return cursor.rowcount
 

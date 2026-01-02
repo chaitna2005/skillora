@@ -17,9 +17,18 @@ class TestAnswer(BaseModel):
     question_option_ids: List[int]  # Can be multiple for CHECKLIST type
 
 
+class SaveAnswerRequest(BaseModel):
+    question_id: int
+    question_option_ids: List[int]  # Can be multiple for CHECKLIST type
+
+
 class TestSubmit(BaseModel):
     uqt_id: int
     answers: List[TestAnswer]
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: List[int]
 
 
 class TestResponse(BaseModel):
@@ -27,11 +36,12 @@ class TestResponse(BaseModel):
     user_id: int
     quiz_id: int
     quiz_name: Optional[str] = None
-    start_time: datetime
+    start_time: Optional[datetime] = None
     completed_time: Optional[datetime] = None
     total_correct: Optional[int] = None
     total_questions: Optional[int] = None
     result: Optional[str] = None
+    status: str  # NOT_STARTED, IN_PROGRESS, or COMPLETED
 
 
 class TestResultDetail(BaseModel):

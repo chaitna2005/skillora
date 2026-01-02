@@ -25,6 +25,10 @@ class QuizCreate(BaseModel):
     total_no_questions: int = 10
 
 
+class BulkDeleteRequest(BaseModel):
+    ids: List[int]
+
+
 class QuestionOptionResponse(BaseModel):
     question_option_id: int
     option_text: str

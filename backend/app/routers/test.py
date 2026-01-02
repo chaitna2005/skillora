@@ -12,7 +12,9 @@ from app.schemas.test import (
     TestResponse,
     TestResult,
     TestSummary,
-    TestResultDetail
+    TestResultDetail,
+    BulkDeleteRequest,
+    SaveAnswerRequest
 )
 from app.models.test import TestModel
 from app.models.question import QuestionModel
@@ -28,20 +30,75 @@ def start_test(
     user_id: int = Query(..., description="User ID starting the test"),
     cursor: RealDictCursor = Depends(get_db)
 ):
-    """Start a new test attempt"""
+    """Start a new test attempt or resume existing pending test
+    
+    Business Rules:
+    - Always check for existing pending test (regardless of assignment_id)
+    - If existing test found: Resume it (handles continuation from Pending Tests)
+    - If no existing test: Create new test
+    - This ensures:
+      * First click from My Quizzes → creates new test (no existing test)
+      * Click from Pending Tests → resumes existing test (if exists)
+      * Subsequent clicks from My Quizzes → creates new test (if no existing test)
+    """
     
     # Handle quiz_assignment_id - convert 0 or None to None (NULL in DB)
     assignment_id = test_data.quiz_assignment_id
     if assignment_id is not None and assignment_id <= 0:
         assignment_id = None
     
+    # MANDATORY: Create test attempt IMMEDIATELY when "Take Test" is clicked
+    # This test MUST appear in Pending Tests with status IN_PROGRESS
+    # Test is persisted BEFORE questions are rendered
+    
+    # Check for existing pending test ONLY if assignment_id exists (from Pending Tests)
+    # If assignment_id is NULL (from My Quizzes), always create new test
+    if assignment_id is not None:
+        # Coming from Pending Tests - check for existing test to resume
+        existing_test = TestModel.get_pending_test_for_quiz(
+            cursor, 
+            user_id, 
+            test_data.quiz_id, 
+            assignment_id
+        )
+        
+        if existing_test:
+            # Found existing test - resume it
+            if existing_test.get("status") == "NOT_STARTED":
+                updated_test = TestModel.update_test_to_in_progress(cursor, existing_test["uqt_id"])
+                if updated_test:
+                    quiz_take = TestModel.get_quiz_take(cursor, updated_test["uqt_id"])
+                    return quiz_take
+            
+            # Return existing IN_PROGRESS test (resume)
+            quiz_take = TestModel.get_quiz_take(cursor, existing_test["uqt_id"])
+            return quiz_take
+    
+    # No assignment_id (My Quizzes) OR no existing test - CREATE NEW TEST
+    # This ensures a test is ALWAYS created when clicking "Take Test" from My Quizzes
     take_data = {
         "user_id": user_id,
         "quiz_id": test_data.quiz_id,
         "quiz_assignment_id": assignment_id
     }
     
-    quiz_take = TestModel.create_quiz_take(cursor, take_data)
+    # CRITICAL: set_start_time=True ensures status = IN_PROGRESS immediately
+    # INSERT happens here - record is created in database
+    quiz_take = TestModel.create_quiz_take(cursor, take_data, set_start_time=True)
+    
+    # MANDATORY: Verify record was created
+    if not quiz_take or not quiz_take.get("uqt_id"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create test attempt"
+        )
+    
+    # Ensure status is IN_PROGRESS
+    if quiz_take.get("status") != "IN_PROGRESS":
+        quiz_take["status"] = "IN_PROGRESS"
+    
+    # Transaction commits automatically via get_db dependency when function returns
+    # Record is now persisted in database and will appear in Pending Tests
     return quiz_take
 
 
@@ -224,6 +281,76 @@ def submit_test(
     )
 
 
+@router.get("/answers/{uqt_id}")
+def get_test_answers(uqt_id: int, cursor: RealDictCursor = Depends(get_db)):
+    """Get existing answers for a test (for resuming)"""
+    
+    quiz_take = TestModel.get_quiz_take(cursor, uqt_id)
+    
+    if not quiz_take:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test not found"
+        )
+    
+    # Get answers grouped by question_id
+    test_answers = TestModel.get_test_answers(cursor, uqt_id)
+    
+    # Format as { question_id: [option_id1, option_id2, ...] }
+    answers_by_question = {}
+    for answer in test_answers:
+        question_id = answer["question_id"]
+        option_id = answer["question_option_id"]
+        if question_id not in answers_by_question:
+            answers_by_question[question_id] = []
+        answers_by_question[question_id].append(option_id)
+    
+    return {
+        "uqt_id": uqt_id,
+        "answers": answers_by_question
+    }
+
+
+@router.post("/save-answer/{uqt_id}")
+def save_answer(
+    uqt_id: int,
+    answer_data: SaveAnswerRequest,
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Save answer for a question during test taking (before final submission)"""
+    
+    # Verify test exists and is not completed
+    quiz_take = TestModel.get_quiz_take(cursor, uqt_id)
+    
+    if not quiz_take:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test not found"
+        )
+    
+    # Check if already completed
+    if quiz_take.get("completed_time"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot save answers for completed test"
+        )
+    
+    # Save answers (without correctness evaluation - that happens on submission)
+    TestModel.save_answers_for_question(
+        cursor,
+        uqt_id,
+        answer_data.question_id,
+        answer_data.question_option_ids,
+        is_correct=False  # Will be recomputed on submission
+    )
+    
+    return {
+        "message": "Answer saved successfully",
+        "uqt_id": uqt_id,
+        "question_id": answer_data.question_id
+    }
+
+
 @router.get("/result/{uqt_id}", response_model=TestResult)
 def get_test_result(uqt_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get detailed results for a completed test"""
@@ -371,24 +498,59 @@ def get_test_result(uqt_id: int, cursor: RealDictCursor = Depends(get_db)):
 def get_user_tests(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get all tests taken by a user"""
     
+    print(f"[API] get_user_tests called with user_id: {user_id}")
     tests = TestModel.get_all_user_tests(cursor, user_id)
+    print(f"[API] get_user_tests returned {len(tests)} tests from database")
+    
     # Map total_no_questions to total_questions for schema compatibility
+    # Ensure all required fields are present
+    validated_tests = []
     for test in tests:
         if "total_no_questions" in test:
             test["total_questions"] = test.pop("total_no_questions")
-    return tests
+        
+        # Ensure status is present
+        if "status" not in test:
+            test["status"] = TestModel._compute_status(test.get("start_time"), test.get("completed_time"))
+        
+        # Ensure all required TestResponse fields are present
+        if "uqt_id" in test and "user_id" in test and "quiz_id" in test:
+            validated_tests.append(test)
+        else:
+            print(f"[API] WARNING: Test missing required fields: {test}")
+    
+    print(f"[API] get_user_tests validated count: {len(validated_tests)}")
+    return validated_tests
 
 
 @router.get("/user/{user_id}/pending", response_model=List[TestResponse])
 def get_pending_tests(user_id: int, cursor: RealDictCursor = Depends(get_db)):
-    """Get all pending (incomplete) tests for a user"""
+    """Get all pending (incomplete) tests for a user - includes NOT_STARTED and IN_PROGRESS"""
     
+    # MANDATORY: Query MUST return all tests where completed_time IS NULL
+    # This includes both NOT_STARTED and IN_PROGRESS tests
     tests = TestModel.get_pending_tests(cursor, user_id)
+    
+    # MANDATORY: Return ALL pending tests including IN_PROGRESS
     # Map total_no_questions to total_questions for schema compatibility
+    # Ensure all required fields are present
+    validated_tests = []
     for test in tests:
+        # Map field name for schema compatibility
         if "total_no_questions" in test:
             test["total_questions"] = test.pop("total_no_questions")
-    return tests
+        
+        # MANDATORY: Ensure status is computed correctly
+        # Query already filters by completed_time IS NULL, so status should be NOT_STARTED or IN_PROGRESS
+        if "status" not in test:
+            test["status"] = TestModel._compute_status(test.get("start_time"), test.get("completed_time"))
+        
+        # MANDATORY: Include ALL tests with required fields
+        # Do NOT filter by status - include ALL tests returned by query
+        if "uqt_id" in test and "user_id" in test and "quiz_id" in test:
+            validated_tests.append(test)
+    
+    return validated_tests
 
 
 @router.delete("/pending/{uqt_id}")
@@ -410,16 +572,112 @@ def delete_pending_test(
     return {"message": "Pending test deleted successfully"}
 
 
+@router.delete("/pending/all")
+def delete_all_pending_tests(
+    user_id: int = Query(..., description="User ID deleting all pending tests"),
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Delete all pending tests for a user"""
+    
+    deleted_count = TestModel.delete_all_pending_tests(cursor, user_id)
+    
+    return {
+        "message": f"Successfully deleted {deleted_count} pending test(s)",
+        "deleted_count": deleted_count
+    }
+
+
+@router.delete("/completed/all")
+def delete_all_completed_tests(
+    user_id: int = Query(..., description="User ID deleting all completed tests"),
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Delete all completed tests for a user"""
+    
+    deleted_count = TestModel.delete_all_completed_tests(cursor, user_id)
+    
+    return {
+        "message": f"Successfully deleted {deleted_count} completed test(s)",
+        "deleted_count": deleted_count
+    }
+
+
+@router.post("/pending/bulk-delete")
+def bulk_delete_pending_tests(
+    request: BulkDeleteRequest,
+    user_id: int = Query(..., description="User ID deleting tests"),
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Bulk delete specific pending tests by IDs"""
+    
+    if not request.ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No IDs provided"
+        )
+    
+    deleted_count = TestModel.delete_pending_tests_by_ids(cursor, request.ids, user_id)
+    
+    return {
+        "message": f"Successfully deleted {deleted_count} pending test(s)",
+        "deleted_count": deleted_count,
+        "requested_count": len(request.ids)
+    }
+
+
+@router.post("/completed/bulk-delete")
+def bulk_delete_completed_tests(
+    request: BulkDeleteRequest,
+    user_id: int = Query(..., description="User ID deleting tests"),
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Bulk delete specific completed tests by IDs"""
+    
+    if not request.ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No IDs provided"
+        )
+    
+    deleted_count = TestModel.delete_completed_tests_by_ids(cursor, request.ids, user_id)
+    
+    return {
+        "message": f"Successfully deleted {deleted_count} completed test(s)",
+        "deleted_count": deleted_count,
+        "requested_count": len(request.ids)
+    }
+
+
 @router.get("/user/{user_id}/completed", response_model=List[TestResponse])
 def get_completed_tests(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get all completed tests for a user"""
     
+    print(f"[API] get_completed_tests called with user_id: {user_id}")
     tests = TestModel.get_completed_tests(cursor, user_id)
+    print(f"[API] get_completed_tests returned {len(tests)} tests from database")
+    
     # Map total_no_questions to total_questions for schema compatibility
+    # Ensure all required fields are present
+    validated_tests = []
     for test in tests:
         if "total_no_questions" in test:
             test["total_questions"] = test.pop("total_no_questions")
-    return tests
+        
+        # Ensure status is present
+        if "status" not in test:
+            test["status"] = TestModel._compute_status(test.get("start_time"), test.get("completed_time"))
+        
+        # Ensure all required TestResponse fields are present
+        if "uqt_id" in test and "user_id" in test and "quiz_id" in test:
+            validated_tests.append(test)
+        else:
+            print(f"[API] WARNING: Test missing required fields: {test}")
+    
+    print(f"[API] get_completed_tests validated count: {len(validated_tests)}")
+    if validated_tests:
+        print(f"[API] First completed test sample: {validated_tests[0]}")
+    
+    return validated_tests
 
 
 @router.get("/summary/{user_id}", response_model=TestSummary)
