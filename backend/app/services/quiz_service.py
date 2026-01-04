@@ -49,27 +49,9 @@ class QuizService:
         if not quiz_name:
             quiz_name = self.openai_service.generate_quiz_name(prompt)
         
-        # Step 1.5: Verify and correct all questions using second LLM verification
-        print(f"[VERIFICATION] Starting verification of {len(questions)} questions...")
-        questions = self.openai_service.verify_and_correct_questions(questions)
-        print(f"[VERIFICATION] Completed verification of {len(questions)} questions")
-        
-        # Step 1.6: Override math answers using deterministic computation (CRITICAL)
-        print(f"[MATH_EVAL] Starting deterministic math evaluation...")
-        questions = self.openai_service.evaluate_and_override_math_answers(questions)
-        print(f"[MATH_EVAL] Completed math evaluation of {len(questions)} questions")
-        
-        # Step 1.7: Strict validation - reject invalid questions BEFORE saving
-        print(f"[VALIDATION] Starting strict validation of {len(questions)} questions...")
-        valid_questions = self._validate_questions(questions, total_no_questions)
-        print(f"[VALIDATION] Validated {len(valid_questions)}/{len(questions)} questions as valid")
-        
-        # Ensure we have enough valid questions
-        if len(valid_questions) < total_no_questions:
-            print(f"[WARNING] Only {len(valid_questions)} valid questions out of {total_no_questions} requested")
-            # Continue with available valid questions (don't fail, but log warning)
-        
-        questions = valid_questions[:total_no_questions]
+        # Use AI-generated questions directly - trust the AI
+        # Limit to requested number
+        questions = questions[:total_no_questions]
         
         # Step 2: Create quiz
         quiz_data = {
@@ -99,78 +81,11 @@ class QuizService:
             # Do not block quiz creation if prompt saving fails
             print(f"[WARNING] Failed to save prompt to Example_Prompt: {e}")
         
-        # Step 3: Validate and save questions and options
+        # Step 3: Save questions and options (trust AI-generated content)
         for question_data in questions:
-            # Validate math question and correct is_correct flags if needed
             question_text = question_data.get("question_text", "")
             question_type = question_data.get("question_type", "RADIO")
             options = question_data.get("options", [])
-            
-            # Check if this is a math question that needs validation
-            is_math = TestService._is_math_question(question_text)
-            
-            if is_math:
-                try:
-                    # Compute correct answer programmatically
-                    correct_answer = TestService._compute_correct_answer(question_text, question_type)
-                    
-                    if correct_answer is not None:
-                        # Find options that match the computed answer
-                        correct_option_indices = []
-                        for i, option in enumerate(options):
-                            option_text = option.get("option_text", "")
-                            option_value = TestService._extract_math_value(option_text)
-                            
-                            if option_value is not None:
-                                if abs(option_value - correct_answer) < 0.0001:
-                                    correct_option_indices.append(i)
-                        
-                        # Override is_correct flags based on computed answer
-                        if correct_option_indices:
-                            # Reset all flags
-                            for option in options:
-                                option["is_correct"] = False
-                            
-                            # Set correct flags
-                            for idx in correct_option_indices:
-                                options[idx]["is_correct"] = True
-                            
-                            # For RADIO, ensure exactly one correct answer
-                            if question_type == "RADIO" and len(correct_option_indices) > 1:
-                                # Keep only the first matching option as correct
-                                for idx in correct_option_indices[1:]:
-                                    options[idx]["is_correct"] = False
-                            
-                            print(f"[VALIDATION] Corrected math question: '{question_text[:50]}...' - Correct answer: {correct_answer}, Correct options: {correct_option_indices}")
-                        else:
-                            print(f"[VALIDATION] WARNING: No options match computed answer {correct_answer} for question: '{question_text[:50]}...'")
-                    else:
-                        print(f"[VALIDATION] WARNING: Cannot compute answer for math question: '{question_text[:50]}...'")
-                except Exception as e:
-                    print(f"[VALIDATION] Error validating math question: {e}")
-                    # Continue with original flags if validation fails
-            
-            # Ensure at least one correct answer exists
-            correct_count = sum(1 for opt in options if opt.get("is_correct", False))
-            if correct_count == 0:
-                print(f"[VALIDATION] WARNING: No correct answers found, marking first option as correct")
-                if options:
-                    options[0]["is_correct"] = True
-            
-            # For RADIO, ensure exactly one correct answer
-            if question_type == "RADIO":
-                if correct_count == 0:
-                    if options:
-                        options[0]["is_correct"] = True
-                elif correct_count > 1:
-                    # Keep only the first correct option
-                    first_correct_found = False
-                    for option in options:
-                        if option.get("is_correct", False):
-                            if first_correct_found:
-                                option["is_correct"] = False
-                            else:
-                                first_correct_found = True
             
             # Create question
             question = QuestionModel.create_question(cursor, {
