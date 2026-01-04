@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getQuiz, startTest, submitTest, getTestAnswers, saveAnswer } from '../services/api';
+import { getQuiz, startTest, submitTest, getTestAnswers, saveAnswer, getHint } from '../services/api';
 import '../styles/TakeTest.css';
 
 const TakeTest = () => {
@@ -15,6 +15,8 @@ const TakeTest = () => {
   const [uqtId, setUqtId] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [hints, setHints] = useState({}); // Store hints per question_id
+  const [loadingHint, setLoadingHint] = useState({}); // Track loading state per question
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -25,6 +27,8 @@ const TakeTest = () => {
     setUqtId(null);
     setCurrentQuestionIndex(0);
     setAnswers({});
+    setHints({});
+    setLoadingHint({});
     setError('');
     setSubmitting(false);
     loadQuiz();
@@ -89,15 +93,31 @@ const TakeTest = () => {
     try {
       setLoading(true);
       setError('');
-      const quizData = await getQuiz(quizId);
-      setQuiz(quizData);
       
-      // Start or resume the test
-      // CRITICAL: Backend behavior:
-      // - If assignmentId exists (Pending Tests): Resumes existing test if available
-      // - If assignmentId is NULL (My Quizzes): ALWAYS creates new test, never resumes
+      // CRITICAL: Start or resume the test first to get uqt_id
+      // Backend ALWAYS checks for existing pending test (completed_time IS NULL) before creating new one
+      // This prevents duplicate attempts from being created
+      // If existing pending test found: Returns existing uqt_id
+      // If NO existing pending test: Creates ONE new attempt and returns uqt_id
       const testData = await startTest(user.user_id, quizId, assignmentId);
+      
+      // CRITICAL: Store uqt_id immediately - this is the SINGLE attempt ID for this test session
+      if (!testData || !testData.uqt_id) {
+        throw new Error('Failed to start test: uqt_id not returned');
+      }
+      
+      console.log(`[DEBUG] Test started/resumed: uqt_id=${testData.uqt_id}`);
       setUqtId(testData.uqt_id);
+      
+      // CRITICAL: Persist uqt_id to localStorage for reliability
+      // Store both with quizId key (for recovery) and simple key (for submit)
+      localStorage.setItem(`uqt_id_${quizId}`, testData.uqt_id.toString());
+      localStorage.setItem("uqt_id", testData.uqt_id.toString());
+      
+      // Fetch quiz with shuffling for test integrity
+      // Use uqt_id as seed for deterministic shuffling (consistent order per attempt)
+      const quizData = await getQuiz(quizId, true, testData.uqt_id);
+      setQuiz(quizData);
       
       // Initialize answers object
       const initialAnswers = {};
@@ -166,6 +186,34 @@ const TakeTest = () => {
     }
   };
 
+  const handleGetHint = async (questionId, questionText, options) => {
+    // If hint already exists, don't fetch again
+    if (hints[questionId]) {
+      return;
+    }
+
+    try {
+      setLoadingHint(prev => ({ ...prev, [questionId]: true }));
+      
+      const optionTexts = options.map(opt => opt.option_text);
+      const hintData = await getHint(questionId, questionText, optionTexts);
+      
+      setHints(prev => ({
+        ...prev,
+        [questionId]: hintData.hint
+      }));
+    } catch (err) {
+      console.error('Failed to get hint:', err);
+      // Set a fallback hint if API fails
+      setHints(prev => ({
+        ...prev,
+        [questionId]: 'Think carefully about the key concepts related to this question. Consider what you know about the topic and how it applies here.'
+      }));
+    } finally {
+      setLoadingHint(prev => ({ ...prev, [questionId]: false }));
+    }
+  };
+
   const handleSubmit = async () => {
     // Check if all questions are answered
     const unansweredQuestions = quiz.questions.filter(
@@ -208,13 +256,76 @@ const TakeTest = () => {
         }
       });
 
+      // CRITICAL: Use the SAME uqt_id that was set when test started
+      // This ensures we're submitting to the correct attempt (not a duplicate)
+      // Fallback to localStorage if state was lost
+      let finalUqtId = uqtId;
+      
+      // Try simple key first, then quiz-specific key
+      if (!finalUqtId) {
+        const storedUqtId = localStorage.getItem("uqt_id");
+        if (storedUqtId) {
+          finalUqtId = parseInt(storedUqtId);
+          console.log(`[DEBUG] Recovered uqt_id from localStorage (simple key): ${finalUqtId}`);
+          setUqtId(finalUqtId);
+        }
+      }
+      
+      if (!finalUqtId && quiz) {
+        const storedUqtId = localStorage.getItem(`uqt_id_${quiz.quiz_id}`);
+        if (storedUqtId) {
+          finalUqtId = parseInt(storedUqtId);
+          console.log(`[DEBUG] Recovered uqt_id from localStorage (quiz key): ${finalUqtId}`);
+          setUqtId(finalUqtId);
+        }
+      }
+      
+      // CRITICAL: Validate uqt_id exists before submission
+      if (!finalUqtId || isNaN(finalUqtId)) {
+        console.error('[ERROR] uqt_id is missing or invalid:', { uqtId, finalUqtId, quizId: quiz?.quiz_id });
+        throw new Error('Test session ID (uqt_id) is missing. Cannot submit. Please start the test again.');
+      }
+      
+      console.log(`[DEBUG] Using uqt_id for submission: ${finalUqtId}`);
+      
+      // MANDATORY: Include user_id and quiz_id for reliable submission
       const submitData = {
-        uqt_id: uqtId,
+        uqt_id: finalUqtId,  // Optional - backend will use user_id + quiz_id if unreliable
+        user_id: user.user_id,  // Required
+        quiz_id: quiz.quiz_id,  // Required
         answers: formattedAnswers
       };
 
+      console.log(`[DEBUG] Submitting test with uqt_id=${finalUqtId}, answers count=${formattedAnswers.length}`);
+      
+      // CRITICAL: Verify uqt_id is in submitData
+      if (!submitData.uqt_id || submitData.uqt_id !== finalUqtId) {
+        console.error('[ERROR] uqt_id mismatch in submitData:', { 
+          submitDataUqtId: submitData.uqt_id, 
+          finalUqtId 
+        });
+        throw new Error('uqt_id mismatch in submission data');
+      }
+      
       const result = await submitTest(submitData);
-      navigate(`/results/${uqtId}`);
+      
+      // CRITICAL: Navigate to results using the SAME uqt_id
+      // Clear localStorage after successful submission
+      localStorage.removeItem("uqt_id");
+      if (quiz) {
+        localStorage.removeItem(`uqt_id_${quiz.quiz_id}`);
+      }
+      
+      console.log(`[DEBUG] Test submitted successfully, navigating to results`);
+      console.log(`[DEBUG] Result data:`, { 
+        uqt_id: result.uqt_id, 
+        completed_time: result.completed_time,
+        total_correct: result.total_correct,
+        quiz_id: result.quiz_id
+      });
+      
+      // CRITICAL: Navigate to results using quiz_id (backend will fetch latest completed attempt)
+      navigate(`/results/${quiz.quiz_id}`);
     } catch (err) {
       setError('Failed to submit test. Please try again.');
       console.error(err);
@@ -341,6 +452,62 @@ const TakeTest = () => {
         </div>
         
         <p className="question-text">{currentQuestion.question_text}</p>
+
+        <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            onClick={() => handleGetHint(
+              currentQuestion.question_id,
+              currentQuestion.question_text,
+              currentQuestion.options
+            )}
+            disabled={loadingHint[currentQuestion.question_id] || !!hints[currentQuestion.question_id]}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: hints[currentQuestion.question_id] ? '#e0e0e0' : '#6C63FF',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: loadingHint[currentQuestion.question_id] || hints[currentQuestion.question_id] ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              opacity: loadingHint[currentQuestion.question_id] || hints[currentQuestion.question_id] ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            {loadingHint[currentQuestion.question_id] ? (
+              <>⏳ Loading...</>
+            ) : hints[currentQuestion.question_id] ? (
+              <>💡 Hint Used</>
+            ) : (
+              <>💡 Hint</>
+            )}
+          </button>
+          {hints[currentQuestion.question_id] && (
+            <span style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic' }}>
+              Hint displayed below
+            </span>
+          )}
+        </div>
+
+        {hints[currentQuestion.question_id] && (
+          <div style={{
+            marginBottom: '20px',
+            padding: '12px 16px',
+            backgroundColor: '#F6F8FF',
+            border: '1px solid #E0E5FF',
+            borderRadius: '8px',
+            borderLeft: '4px solid #A78BFA'
+          }}>
+            <div style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '6px' }}>
+              💡 Hint:
+            </div>
+            <p style={{ margin: 0, fontSize: '14px', color: '#1F2937', lineHeight: '1.6' }}>
+              {hints[currentQuestion.question_id]}
+            </p>
+          </div>
+        )}
 
         <div className="options-container">
           {currentQuestion.options.map((option, index) => (

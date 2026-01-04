@@ -15,7 +15,13 @@ import {
   bulkDeletePendingTests,
   bulkDeleteCompletedTests,
   bulkDeleteQuizzes,
-  bulkDeleteAssignedQuizzes
+  bulkDeleteAssignedQuizzes,
+  createShareLink,
+  getAssignmentResults,
+  getQuizAnalytics,
+  getQuestionDifficulty,
+  exportQuizResultsCSV,
+  getUserStats
 } from '../services/api';
 import '../styles/Dashboard.css';
 
@@ -38,6 +44,15 @@ const Dashboard = () => {
   const [selectedAssigned, setSelectedAssigned] = useState(new Set());
   const [selectedPending, setSelectedPending] = useState(new Set());
   const [selectedCompleted, setSelectedCompleted] = useState(new Set());
+  const [shareLink, setShareLink] = useState(null);
+  const [assignmentResults, setAssignmentResults] = useState([]);
+  const [showResults, setShowResults] = useState(false);
+  const [quizAnalytics, setQuizAnalytics] = useState([]);
+  const [questionDifficulty, setQuestionDifficulty] = useState([]);
+  const [selectedQuizForDifficulty, setSelectedQuizForDifficulty] = useState(null);
+  const [showDifficultyModal, setShowDifficultyModal] = useState(false);
+  const [userStats, setUserStats] = useState(null);
+  const [newBadgeNotification, setNewBadgeNotification] = useState(null);
   
   // Helper to get user ID (handles different field names)
   const getUserId = () => {
@@ -101,11 +116,12 @@ const Dashboard = () => {
     try {
       setLoading(true);
       
-      const [quizzes, assigned, pending, completed] = await Promise.all([
+      const [quizzes, assigned, pending, completed, stats] = await Promise.all([
         getUserQuizzes(userId).catch(() => []),
         getAssignedQuizzes(userId).catch(() => []),
         getPendingTests(userId).catch(() => []),
-        getCompletedTests(userId).catch(() => [])
+        getCompletedTests(userId).catch(() => []),
+        getUserStats(userId).catch(() => null)
       ]);
       
       // Ensure we have arrays (handle null/undefined responses)
@@ -120,6 +136,21 @@ const Dashboard = () => {
       setAssignedQuizzes(assignedArray);
       setPendingTests(pendingArray);
       setCompletedTests(completedArray);
+      
+      // Update stats and check for new badges
+      if (stats) {
+        const previousBadges = userStats?.unlocked_badges || [];
+        const newBadges = stats.unlocked_badges || [];
+        const newlyUnlocked = newBadges.filter(badge => !previousBadges.includes(badge));
+        
+        // Show notification for newly unlocked badges (only if we had previous stats)
+        if (newlyUnlocked.length > 0 && userStats !== null) {
+          setNewBadgeNotification(newlyUnlocked);
+          setTimeout(() => setNewBadgeNotification(null), 5000); // Auto-hide after 5 seconds
+        }
+        
+        setUserStats(stats);
+      }
     } catch (error) {
       setMyQuizzes([]);
       setAssignedQuizzes([]);
@@ -138,8 +169,16 @@ const Dashboard = () => {
     navigate(`/view-quiz/${quizId}`);
   };
 
-  const handleViewResult = (uqtId) => {
-    navigate(`/results/${uqtId}`);
+  const handleViewResult = (test) => {
+    // CRITICAL: Navigate using quiz_id (backend will fetch latest completed attempt)
+    // test can be either uqtId (number) or test object with quiz_id
+    const quizId = typeof test === 'object' ? test.quiz_id : completedTests.find(t => t.uqt_id === test)?.quiz_id;
+    if (quizId) {
+      navigate(`/results/${quizId}`);
+    } else {
+      console.error('[ERROR] quiz_id not found for test:', test);
+      alert('Quiz ID not found. Cannot view results.');
+    }
   };
 
   const handleDeleteQuiz = async (quizId, e) => {
@@ -385,7 +424,87 @@ const Dashboard = () => {
     });
   };
 
-  const QuizCard = ({ quiz, onTakeTest, onViewQuiz, onDelete, showTakeButton = true, isSelected = false, onSelect = null, section = 'myQuizzes' }) => {
+  const handleShareQuiz = async (quizId) => {
+    try {
+      const userId = getUserId();
+      const result = await createShareLink(quizId, userId);
+      setShareLink(result.share_url);
+      navigator.clipboard.writeText(result.share_url);
+      alert('Share link copied to clipboard!');
+    } catch (error) {
+      alert('Failed to create share link. Please try again.');
+      console.error(error);
+    }
+  };
+
+  const handleViewResults = async () => {
+    try {
+      const userId = getUserId();
+      const results = await getAssignmentResults(userId);
+      const analytics = await getQuizAnalytics(userId);
+      setAssignmentResults(results);
+      setQuizAnalytics(analytics);
+      setShowResults(true);
+    } catch (error) {
+      alert('Failed to load assignment results.');
+      console.error(error);
+    }
+  };
+
+  const handleViewQuestionDifficulty = async (quizId) => {
+    try {
+      const userId = getUserId();
+      if (!userId) {
+        alert('User not logged in.');
+        return;
+      }
+      const difficulty = await getQuestionDifficulty(quizId, userId);
+      if (Array.isArray(difficulty)) {
+        setQuestionDifficulty(difficulty);
+        setSelectedQuizForDifficulty(myQuizzes.find(q => q.quiz_id === quizId));
+        setShowDifficultyModal(true);
+      } else {
+        console.error('Invalid response format:', difficulty);
+        alert('Invalid response from server. Please try again.');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to load question difficulty analysis.';
+      console.error('Error loading question difficulty:', error);
+      alert(errorMessage);
+    }
+  };
+
+  const handleCloseDifficultyModal = () => {
+    setShowDifficultyModal(false);
+    setQuestionDifficulty([]);
+    setSelectedQuizForDifficulty(null);
+  };
+
+  const handleExportCSV = async (quizId = null) => {
+    try {
+      const userId = getUserId();
+      if (!userId) {
+        alert('User not logged in.');
+        return;
+      }
+      
+      const blob = await exportQuizResultsCSV(userId, quizId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = quizId ? `quiz_results_${quizId}.csv` : `all_quiz_results_${userId}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to export quiz results.';
+      console.error('Error exporting CSV:', error);
+      alert(errorMessage);
+    }
+  };
+
+  const QuizCard = ({ quiz, onTakeTest, onViewQuiz, onDelete, onShare, showTakeButton = true, isSelected = false, onSelect = null, section = 'myQuizzes', onViewDifficulty = null, onExportCSV = null }) => {
     const handleCheckboxClick = (e) => {
       e.stopPropagation();
       if (onSelect) {
@@ -419,6 +538,22 @@ const Dashboard = () => {
             <span className={`difficulty-badge ${quiz.difficulty_level.toLowerCase()}`}>
               {quiz.difficulty_level}
             </span>
+            {onShare && user?.role === 'TEACHER' && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onShare(quiz.quiz_id); }} 
+                className="share-btn"
+                title="Share / Assign Quiz"
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  fontSize: '18px',
+                  padding: '4px 8px'
+                }}
+              >
+                🔗
+              </button>
+            )}
             {onDelete && (
               <button 
                 onClick={(e) => onDelete(quiz.quiz_id, e)} 
@@ -442,7 +577,7 @@ const Dashboard = () => {
             <span>📝 {quiz.total_no_questions} questions</span>
             <span>📅 {formatDate(quiz.created_date)}</span>
           </div>
-          <div className="quiz-actions" style={{ display: 'flex', gap: '10px' }}>
+          <div className="quiz-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             {onViewQuiz && (
               <button onClick={() => onViewQuiz(quiz.quiz_id)} className="view-quiz-btn" style={{
                 padding: '8px 16px',
@@ -454,6 +589,46 @@ const Dashboard = () => {
                 fontSize: '14px'
               }}>
                 View Quiz
+              </button>
+            )}
+            {onViewDifficulty && user?.role === 'TEACHER' && (
+              <button onClick={() => onViewDifficulty(quiz.quiz_id)} className="view-difficulty-btn" style={{
+                padding: '8px 16px',
+                backgroundColor: '#ff9800',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}>
+                📊 Difficulty
+              </button>
+            )}
+            {onExportCSV && user?.role === 'TEACHER' && (
+              <button onClick={() => onExportCSV(quiz.quiz_id)} className="export-csv-btn" style={{
+                padding: '8px 16px',
+                backgroundColor: '#4caf50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}>
+                📥 Export CSV
+              </button>
+            )}
+            {onShare && user?.role === 'TEACHER' && (
+              <button onClick={(e) => { e.stopPropagation(); onShare(quiz.quiz_id); }} className="assign-share-btn" style={{
+                padding: '8px 16px',
+                backgroundColor: '#6C63FF',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
+                Assign / Share
               </button>
             )}
             {showTakeButton && (
@@ -618,8 +793,104 @@ const Dashboard = () => {
     );
   };
 
+  // Badge name mapping
+  const badgeNames = {
+    'first_quiz': 'First Quiz Completed',
+    'five_quizzes': '5 Quizzes Completed',
+    'ten_quizzes': '10 Quizzes Completed'
+  };
+
   return (
     <div className="dashboard-container">
+      {/* Badge Notification Toast */}
+      {newBadgeNotification && newBadgeNotification.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 9999,
+          backgroundColor: '#4CAF50',
+          color: 'white',
+          padding: '16px 24px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
+            🎉 New Badge Unlocked!
+          </div>
+          {newBadgeNotification.map((badgeId, idx) => (
+            <div key={idx} style={{ fontSize: '14px', marginTop: '4px' }}>
+              {badgeNames[badgeId] || badgeId}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Stats Display */}
+      {userStats && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '16px',
+          backgroundColor: '#F6F8FF',
+          border: '1px solid #E0E5FF',
+          borderRadius: '8px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {userStats.current_streak > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1F2937'
+              }}>
+                <span>🔥</span>
+                <span>{userStats.current_streak}-day streak</span>
+              </div>
+            )}
+            {userStats.current_streak === 0 && (
+              <div style={{ fontSize: '14px', color: '#6B7280' }}>
+                Start your streak today!
+              </div>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '14px', color: '#6B7280' }}>
+              <span style={{ fontWeight: '600', color: '#1F2937' }}>{userStats.quiz_completion_count}</span> quizzes completed
+            </div>
+            
+            {userStats.unlocked_badges && userStats.unlocked_badges.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '14px', color: '#6B7280' }}>Badges:</span>
+                {userStats.unlocked_badges.map((badgeId, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      backgroundColor: '#6C63FF',
+                      color: 'white',
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '500'
+                    }}
+                    title={badgeNames[badgeId] || badgeId}
+                  >
+                    {badgeNames[badgeId] || badgeId}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {successMessage && (
         <div className="success-message" style={{
           position: 'fixed',
@@ -702,6 +973,50 @@ const Dashboard = () => {
           </button>
         </div>
 
+        {shareLink && (
+          <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '8px', border: '1px solid #4caf50' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <strong>Share Link Created:</strong>
+                <p style={{ margin: '5px 0', wordBreak: 'break-all', color: '#2e7d32' }}>{shareLink}</p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareLink);
+                    alert('Link copied to clipboard!');
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#4caf50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Copy
+                </button>
+                <button 
+                  onClick={() => setShareLink(null)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#f44336',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="tab-content">
           {activeTab === 'myQuizzes' && (
             <div>
@@ -770,6 +1085,9 @@ const Dashboard = () => {
                       onTakeTest={() => handleTakeTest(quiz.quiz_id)}
                       onViewQuiz={handleViewQuiz}
                       onDelete={handleDeleteQuiz}
+                      onShare={handleShareQuiz}
+                      onViewDifficulty={handleViewQuestionDifficulty}
+                      onExportCSV={handleExportCSV}
                       isSelected={selectedQuizzes.has(quiz.quiz_id)}
                       onSelect={handleSelectItem}
                       section="myQuizzes"
@@ -783,6 +1101,34 @@ const Dashboard = () => {
 
           {activeTab === 'assigned' && (
             <div>
+              {user?.role === 'TEACHER' && (
+                <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
+                  <button onClick={() => handleExportCSV()} style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#4caf50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}>
+                    📥 Export All Results (CSV)
+                  </button>
+                  <button onClick={handleViewResults} style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#6C63FF',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}>
+                    View Quiz Analytics
+                  </button>
+                </div>
+              )}
               {assignedQuizzes.length > 0 && (
                 <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -990,7 +1336,7 @@ const Dashboard = () => {
                       key={test.uqt_id}
                       test={test}
                       isPending={false}
-                      onViewResult={() => handleViewResult(test.uqt_id)}
+                      onViewResult={() => handleViewResult(test)}
                       isSelected={selectedCompleted.has(test.uqt_id)}
                       onSelect={handleSelectItem}
                       section="completed"
@@ -1002,6 +1348,283 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Quiz Analytics Modal */}
+      {showResults && user?.role === 'TEACHER' && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '800px',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            width: '90%',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '24px', color: '#1F2937' }}>Quiz Analytics Dashboard</h3>
+              <button 
+                onClick={() => setShowResults(false)} 
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            {quizAnalytics.length === 0 ? (
+              <p style={{ color: '#666', textAlign: 'center', padding: '20px' }}>
+                No quiz analytics available. Assign quizzes to students to see analytics.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {quizAnalytics.map((analytics) => (
+                  <div 
+                    key={analytics.quiz_id}
+                    style={{
+                      border: '1px solid #E0E5FF',
+                      borderRadius: '8px',
+                      padding: '20px',
+                      backgroundColor: '#F6F8FF'
+                    }}
+                  >
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#1F2937', fontWeight: '600' }}>
+                      {analytics.quiz_name}
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px' }}>Total Students</div>
+                        <div style={{ fontSize: '20px', fontWeight: '600', color: '#1F2937' }}>
+                          {analytics.total_students || 0}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px' }}>Attempted</div>
+                        <div style={{ fontSize: '20px', fontWeight: '600', color: '#1F2937' }}>
+                          {analytics.attempted || 0}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px' }}>Average Score</div>
+                        <div style={{ fontSize: '20px', fontWeight: '600', color: '#6C63FF' }}>
+                          {analytics.attempted > 0 ? `${analytics.average_score.toFixed(1)}%` : 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px' }}>Highest Score</div>
+                        <div style={{ fontSize: '20px', fontWeight: '600', color: '#4caf50' }}>
+                          {analytics.attempted > 0 ? `${analytics.highest_score.toFixed(1)}%` : 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px' }}>Lowest Score</div>
+                        <div style={{ fontSize: '20px', fontWeight: '600', color: '#f44336' }}>
+                          {analytics.attempted > 0 ? `${analytics.lowest_score.toFixed(1)}%` : 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px' }}>Total Questions</div>
+                        <div style={{ fontSize: '20px', fontWeight: '600', color: '#1F2937' }}>
+                          {analytics.total_questions || 0}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setShowResults(false)} 
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#6C63FF',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Question Difficulty Modal */}
+      {showDifficultyModal && user?.role === 'TEACHER' && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '900px',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            width: '90%',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '24px', color: '#1F2937' }}>
+                Question Difficulty Analysis
+                {selectedQuizForDifficulty && ` - ${selectedQuizForDifficulty.quiz_name}`}
+              </h3>
+              <button 
+                onClick={handleCloseDifficultyModal} 
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            {questionDifficulty.length === 0 ? (
+              <p style={{ color: '#666', textAlign: 'center', padding: '20px' }}>
+                No question difficulty data available. Students need to complete the quiz first.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {questionDifficulty.map((item, index) => {
+                  const getDifficultyColor = (percentage) => {
+                    if (percentage >= 70) return '#f44336'; // Red
+                    if (percentage >= 40) return '#ff9800'; // Yellow/Orange
+                    return '#4caf50'; // Green
+                  };
+                  
+                  const getDifficultyEmoji = (percentage) => {
+                    if (percentage >= 70) return '🔴';
+                    if (percentage >= 40) return '🟡';
+                    return '🟢';
+                  };
+
+                  const difficultyColor = getDifficultyColor(item.incorrect_percentage);
+                  const difficultyEmoji = getDifficultyEmoji(item.incorrect_percentage);
+
+                  return (
+                    <div 
+                      key={item.question_id}
+                      style={{
+                        border: `2px solid ${difficultyColor}`,
+                        borderRadius: '8px',
+                        padding: '20px',
+                        backgroundColor: '#F6F8FF'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '5px' }}>
+                            Question {index + 1}
+                          </div>
+                          <div style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '10px' }}>
+                            {item.question_text}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '24px', marginLeft: '15px' }}>
+                          {difficultyEmoji}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '3px' }}>Total Attempts</div>
+                          <div style={{ fontSize: '18px', fontWeight: '600', color: '#1F2937' }}>
+                            {item.total_attempts || 0}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '3px' }}>Incorrect Percentage</div>
+                          <div style={{ fontSize: '18px', fontWeight: '600', color: difficultyColor }}>
+                            {item.incorrect_percentage.toFixed(1)}%
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, textAlign: 'right' }}>
+                          <span style={{ 
+                            fontSize: '14px', 
+                            color: difficultyColor,
+                            fontWeight: '500'
+                          }}>
+                            {item.incorrect_percentage >= 70 
+                              ? '❌ Very Difficult' 
+                              : item.incorrect_percentage >= 40 
+                              ? '⚠️ Moderate Difficulty' 
+                              : '✅ Easy'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={handleCloseDifficultyModal} 
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#6C63FF',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

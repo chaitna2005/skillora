@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import Database
-from app.routers import users, quiz, test
+from app.routers import users, quiz, test, assignment, prompt
 
 
 @asynccontextmanager
@@ -45,6 +45,8 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(quiz.router)
 app.include_router(test.router)
+app.include_router(assignment.router)
+app.include_router(prompt.router)
 
 
 @app.get("/")

@@ -2,6 +2,7 @@
 Question Model
 Handles question and question options database operations
 """
+import random
 from typing import Optional, Dict, Any, List
 from psycopg2.extras import RealDictCursor
 
@@ -55,8 +56,15 @@ class QuestionModel:
         return [dict(row) for row in cursor.fetchall()]
     
     @staticmethod
-    def get_quiz_with_questions(cursor: RealDictCursor, quiz_id: int) -> Optional[Dict]:
-        """Get quiz with all questions and options"""
+    def get_quiz_with_questions(cursor: RealDictCursor, quiz_id: int, shuffle: bool = False, seed: Optional[int] = None) -> Optional[Dict]:
+        """Get quiz with all questions and options
+        
+        Args:
+            cursor: Database cursor
+            quiz_id: Quiz ID
+            shuffle: Whether to shuffle questions and options
+            seed: Optional seed for deterministic shuffling (for consistent order per test attempt)
+        """
         # Get quiz
         quiz_query = """
             SELECT quiz_id, user_id, prompt, total_no_questions, difficulty_level, quiz_name, created_date
@@ -74,10 +82,33 @@ class QuestionModel:
         # Get questions
         questions = QuestionModel.get_questions_by_quiz(cursor, quiz_id)
         
+        # Shuffle questions if requested
+        if shuffle:
+            if seed is not None:
+                random.seed(seed)
+            else:
+                random.seed()  # Use system time for randomness
+            random.shuffle(questions)
+        
         # Get options for each question
         for question in questions:
             options = QuestionModel.get_question_options(cursor, question['question_id'])
+            
+            # Shuffle options if requested
+            if shuffle:
+                if seed is not None:
+                    # Use question_id as additional seed component for per-question variation
+                    # This ensures different questions get different option orders
+                    random.seed(seed + question['question_id'])
+                else:
+                    random.seed()  # Use system time for randomness
+                random.shuffle(options)
+            
             question['options'] = options
+        
+        # Reset random seed to avoid affecting other operations
+        if shuffle:
+            random.seed()
         
         quiz_dict['questions'] = questions
         return quiz_dict

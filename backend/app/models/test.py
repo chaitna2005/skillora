@@ -63,15 +63,85 @@ class TestModel:
     
     @staticmethod
     def complete_quiz_take(cursor: RealDictCursor, uqt_id: int, total_correct: int, result: str) -> Optional[Dict]:
-        """Mark quiz attempt as completed"""
-        query = """
+        """Mark quiz attempt as completed
+        
+        CRITICAL: 
+        - This method ONLY UPDATES existing records - NEVER creates new ones
+        - Sets completed_time = NOW() as the single source of truth for completion
+        - Updates the EXISTING row identified by uqt_id
+        - This is called ONLY from submit_test endpoint, never from start_test
+        """
+        print(f"[DEBUG] complete_quiz_take called: uqt_id={uqt_id}, total_correct={total_correct}, result={result}")
+        
+        # CRITICAL: UPDATE existing record - NO INSERT
+        # This updates the row created by start_test endpoint
+        # First verify the record exists and is not already completed
+        verify_query = """
+            SELECT uqt_id, completed_time
+            FROM "User_Quiz_Take"
+            WHERE uqt_id = %s
+        """
+        cursor.execute(verify_query, (uqt_id,))
+        verify_row = cursor.fetchone()
+        
+        if not verify_row:
+            print(f"[ERROR] Attempt not found for uqt_id: {uqt_id}")
+            raise ValueError(f"Attempt not found - uqt_id {uqt_id} does not exist")
+        
+        if verify_row.get("completed_time"):
+            print(f"[ERROR] Attempt already completed for uqt_id: {uqt_id}")
+            raise ValueError(f"Attempt already completed - uqt_id {uqt_id} has completed_time set")
+        
+        # MANDATORY DEBUG LOG: Setting completed_time
+        print("SETTING completed_time")
+        print(f"  - uqt_id: {uqt_id}")
+        print(f"  - total_correct: {total_correct}")
+        print(f"  - result: {result}")
+        
+        # CRITICAL: UPDATE the EXISTING record
+        # This is the ONLY database write operation in submit flow
+        # NO INSERT - ONLY UPDATE
+        update_query = """
             UPDATE "User_Quiz_Take"
             SET completed_time = NOW(), total_correct = %s, result = %s
             WHERE uqt_id = %s
             RETURNING uqt_id, user_id, quiz_id, start_time, completed_time, total_correct, result, quiz_assignment_id
         """
-        cursor.execute(query, (total_correct, result, uqt_id))
-        return dict(cursor.fetchone())
+        cursor.execute(update_query, (total_correct, result, uqt_id))
+        result_row = cursor.fetchone()
+        
+        if not result_row:
+            print(f"[ERROR] UPDATE failed - no row updated for uqt_id: {uqt_id}")
+            raise ValueError(f"Failed to update test completion - UPDATE returned no rows for uqt_id {uqt_id}")
+        
+        updated_record = dict(result_row)
+        
+        # MANDATORY DEBUG LOG: Verify completed_time was set
+        print(f"UPDATE EXECUTED - completed_time: {updated_record.get('completed_time')}")
+        
+        # CRITICAL: Verify completed_time was actually set
+        if not updated_record.get("completed_time"):
+            print(f"[ERROR] UPDATE succeeded but completed_time is still NULL for uqt_id: {uqt_id}")
+            raise ValueError(f"UPDATE succeeded but completed_time was not set for uqt_id {uqt_id}")
+        
+        # CRITICAL: Verify we updated the correct row (uqt_id matches)
+        if updated_record.get("uqt_id") != uqt_id:
+            print(f"[ERROR] UPDATE returned wrong uqt_id: expected {uqt_id}, got {updated_record.get('uqt_id')}")
+            raise ValueError(f"UPDATE returned wrong uqt_id: expected {uqt_id}, got {updated_record.get('uqt_id')}")
+        
+        print(f"[DEBUG] Successfully UPDATED existing test:")
+        print(f"  - uqt_id: {updated_record.get('uqt_id')}")
+        print(f"  - completed_time: {updated_record.get('completed_time')}")
+        print(f"  - total_correct: {updated_record.get('total_correct')}")
+        print(f"  - result: {updated_record.get('result')}")
+        
+        # CRITICAL: Commit happens automatically via get_db() dependency when function returns
+        # The database connection context manager commits on successful return
+        # We log this here to confirm commit will happen
+        print("COMMIT DONE (will commit when function returns successfully)")
+        print("=" * 60)
+        
+        return updated_record
     
     @staticmethod
     def save_answer(cursor: RealDictCursor, answer_data: Dict[str, Any]) -> None:
@@ -143,8 +213,68 @@ class TestModel:
         return [dict(row) for row in cursor.fetchall()]
     
     @staticmethod
+    def get_most_recent_unfinished_attempt(cursor: RealDictCursor, user_id: int, quiz_id: int) -> Optional[Dict]:
+        """Get the most recent unfinished attempt for a user and quiz
+        
+        Returns the attempt with the latest start_time where completed_time IS NULL.
+        This is used when uqt_id is unreliable or not provided.
+        """
+        query = """
+            SELECT uqt.*, q.quiz_name, q.total_no_questions, q.difficulty_level
+            FROM "User_Quiz_Take" uqt
+            JOIN "Quiz" q ON uqt.quiz_id = q.quiz_id
+            WHERE uqt.user_id = %s 
+                AND uqt.quiz_id = %s
+                AND uqt.completed_time IS NULL
+            ORDER BY 
+                CASE 
+                    WHEN uqt.start_time IS NULL THEN 0
+                    ELSE 1
+                END,
+                uqt.start_time DESC NULLS LAST
+            LIMIT 1
+        """
+        cursor.execute(query, (user_id, quiz_id))
+        result = cursor.fetchone()
+        if result:
+            result_dict = dict(result)
+            result_dict["status"] = TestModel._compute_status(result_dict.get("start_time"), result_dict.get("completed_time"))
+            return result_dict
+        return None
+    
+    @staticmethod
+    def get_latest_completed_attempt(cursor: RealDictCursor, user_id: int, quiz_id: int) -> Optional[Dict]:
+        """Get the latest completed attempt for a user and quiz
+        
+        CRITICAL: Returns ONLY attempts where completed_time IS NOT NULL.
+        Orders by completed_time DESC to get the most recent completion.
+        This is used by Results API to fetch completed test results.
+        """
+        query = """
+            SELECT uqt.*, q.quiz_name, q.total_no_questions, q.difficulty_level
+            FROM "User_Quiz_Take" uqt
+            JOIN "Quiz" q ON uqt.quiz_id = q.quiz_id
+            WHERE uqt.user_id = %s 
+                AND uqt.quiz_id = %s
+                AND uqt.completed_time IS NOT NULL
+            ORDER BY uqt.completed_time DESC
+            LIMIT 1
+        """
+        cursor.execute(query, (user_id, quiz_id))
+        result = cursor.fetchone()
+        if result:
+            result_dict = dict(result)
+            result_dict["status"] = TestModel._compute_status(result_dict.get("start_time"), result_dict.get("completed_time"))
+            return result_dict
+        return None
+    
+    @staticmethod
     def get_pending_test_for_quiz(cursor: RealDictCursor, user_id: int, quiz_id: int, assignment_id: Optional[int] = None) -> Optional[Dict]:
-        """Get existing pending test for a quiz (if any) - returns NOT_STARTED or IN_PROGRESS tests"""
+        """Get existing pending test for a quiz (if any)
+        
+        CRITICAL: Uses completed_time as single source of truth.
+        Returns test ONLY if completed_time IS NULL (not yet completed).
+        """
         if assignment_id is not None:
             # Check for pending test with matching assignment
             query = """
@@ -259,17 +389,13 @@ class TestModel:
     
     @staticmethod
     def get_pending_tests(cursor: RealDictCursor, user_id: int) -> List[Dict]:
-        """Get all pending tests for a user - includes NOT_STARTED and IN_PROGRESS tests
+        """Get all pending tests for a user
         
-        MANDATORY: Returns ALL tests where:
-        - user_id matches
-        - completed_time IS NULL (not submitted)
-        This includes:
-          * NOT_STARTED: start_time IS NULL AND completed_time IS NULL
-          * IN_PROGRESS: start_time IS NOT NULL AND completed_time IS NULL
+        CRITICAL: Uses completed_time as single source of truth.
+        Returns ALL tests where completed_time IS NULL (not yet completed).
+        This includes both NOT_STARTED (start_time IS NULL) and IN_PROGRESS (start_time IS NOT NULL) tests.
         """
-        # MANDATORY: Query MUST return all unfinished tests
-        # Filter ONLY by completed_time IS NULL - NO other filters
+        # CRITICAL: Filter ONLY by completed_time IS NULL - this is the single source of truth
         query = """
             SELECT 
                 uqt.uqt_id,
@@ -315,7 +441,11 @@ class TestModel:
     
     @staticmethod
     def delete_quiz_take(cursor: RealDictCursor, uqt_id: int, user_id: int) -> bool:
-        """Delete a quiz take (pending test) - only if not completed and belongs to user"""
+        """Delete a quiz take (pending test)
+        
+        CRITICAL: Uses completed_time as single source of truth.
+        Only deletes if completed_time IS NULL (not yet completed) and belongs to user.
+        """
         query = """
             DELETE FROM "User_Quiz_Take"
             WHERE uqt_id = %s 
@@ -327,7 +457,11 @@ class TestModel:
     
     @staticmethod
     def get_completed_tests(cursor: RealDictCursor, user_id: int) -> List[Dict]:
-        """Get all completed tests for a user - only COMPLETED status"""
+        """Get all completed tests for a user
+        
+        CRITICAL: Uses completed_time as single source of truth.
+        Returns ALL tests where completed_time IS NOT NULL (test has been submitted).
+        """
         query = """
             SELECT 
                 uqt.uqt_id,

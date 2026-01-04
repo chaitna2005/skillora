@@ -41,8 +41,16 @@ const MyTests = () => {
     });
   };
 
-  const handleViewResult = (uqtId) => {
-    navigate(`/results/${uqtId}`);
+  const handleViewResult = (test) => {
+    // CRITICAL: Navigate using quiz_id (backend will fetch latest completed attempt)
+    // test can be either uqtId (number) or test object with quiz_id
+    const quizId = typeof test === 'object' ? test.quiz_id : tests.find(t => t.uqt_id === test)?.quiz_id;
+    if (quizId) {
+      navigate(`/results/${quizId}`);
+    } else {
+      console.error('[ERROR] quiz_id not found for test:', test);
+      alert('Quiz ID not found. Cannot view results.');
+    }
   };
 
   if (loading) {
@@ -126,7 +134,7 @@ const MyTests = () => {
                 </div>
                 
                 <button 
-                  onClick={() => handleViewResult(test.uqt_id)}
+                  onClick={() => handleViewResult(test)}
                   className="view-details-btn"
                 >
                   View Details →

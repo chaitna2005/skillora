@@ -5,8 +5,9 @@ API endpoints for user registration and authentication
 from fastapi import APIRouter, Depends, HTTPException, status
 from psycopg2.extras import RealDictCursor
 from app.database import get_db
-from app.schemas.user import UserRegister, UserLogin, UserResponse, LoginResponse
+from app.schemas.user import UserRegister, UserLogin, UserResponse, LoginResponse, UserStatsResponse
 from app.models.user import UserModel
+from app.services.user_stats_service import UserStatsService
 from app.utils.auth import hash_password, verify_password, create_access_token
 
 
@@ -101,4 +102,29 @@ def get_user(user_id: int, cursor: RealDictCursor = Depends(get_db)):
         )
     
     return user
+
+
+@router.get("/{user_id}/stats", response_model=UserStatsResponse)
+def get_user_stats(user_id: int, cursor: RealDictCursor = Depends(get_db)):
+    """Get user stats (badges and streaks)"""
+    
+    stats = UserModel.get_user_stats(cursor, user_id)
+    
+    if not stats:
+        # Return default stats if user not found or stats not initialized
+        return UserStatsResponse(
+            quiz_completion_count=0,
+            current_streak=0,
+            longest_streak=0,
+            last_active_date=None,
+            unlocked_badges=[]
+        )
+    
+    return UserStatsResponse(
+        quiz_completion_count=stats.get("quiz_completion_count", 0) or 0,
+        current_streak=stats.get("current_streak", 0) or 0,
+        longest_streak=stats.get("longest_streak", 0) or 0,
+        last_active_date=stats.get("last_active_date"),
+        unlocked_badges=stats.get("unlocked_badges", []) or []
+    )
 

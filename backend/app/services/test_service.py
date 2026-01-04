@@ -300,16 +300,22 @@ class TestService:
         answers: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
-        Evaluate user's test answers
+        Evaluate user's test answers and mark test as completed
+        
+        CRITICAL: 
+        - This method UPDATES existing User_Quiz_Take record - NEVER creates new records
+        - Calls complete_quiz_take which does UPDATE ... WHERE uqt_id = %s
+        - Only start_test endpoint creates new User_Quiz_Take records
         
         Args:
             cursor: Database cursor
-            uqt_id: User Quiz Take ID
+            uqt_id: User Quiz Take ID (must exist - created by start_test endpoint)
             answers: List of {question_id, question_option_ids}
         
         Returns:
             Dictionary with score and evaluation details
         """
+        print(f"[DEBUG] evaluate_test called: uqt_id={uqt_id}, answers_count={len(answers)}")
         
         total_correct = 0
         total_questions = len(answers)
@@ -483,8 +489,17 @@ class TestService:
         else:
             result = "NEEDS_IMPROVEMENT"
         
-        # Update quiz take with results
-        TestModel.complete_quiz_take(cursor, uqt_id, total_correct, result)
+        # CRITICAL: Update EXISTING quiz take record with results
+        # complete_quiz_take does UPDATE ... WHERE uqt_id = %s
+        # This sets completed_time = NOW() on the existing row
+        # NO INSERT happens here - record must already exist from start_test
+        print(f"[DEBUG] Calling complete_quiz_take to UPDATE existing record: uqt_id={uqt_id}")
+        updated_record = TestModel.complete_quiz_take(cursor, uqt_id, total_correct, result)
+        
+        if not updated_record:
+            raise ValueError(f"Failed to update test completion for uqt_id: {uqt_id}")
+        
+        print(f"[DEBUG] Test marked as completed: uqt_id={uqt_id}, completed_time={updated_record.get('completed_time')}")
         
         return {
             "total_questions": total_questions,

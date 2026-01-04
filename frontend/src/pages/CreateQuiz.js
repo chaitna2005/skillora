@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { createQuiz } from '../services/api';
+import { createQuiz, getExamplePrompts, trackPromptUsage } from '../services/api';
 import '../styles/CreateQuiz.css';
 
 const CreateQuiz = () => {
@@ -14,6 +14,19 @@ const CreateQuiz = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [prompts, setPrompts] = useState([]);
+
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      try {
+        const fetchedPrompts = await getExamplePrompts();
+        setPrompts(fetchedPrompts || []);
+      } catch (err) {
+        // Silently fail - no prompts will be shown
+      }
+    };
+    fetchPrompts();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -38,20 +51,28 @@ const CreateQuiz = () => {
     }
   };
 
-  const examplePrompts = [
+  const fallbackPrompts = [
     "Test me on World War II history",
-    "Create questions about Python programming",
-    "Quiz me on Indian geography and states",
-    "Generate questions about Machine Learning basics",
-    "Test my knowledge of React.js hooks"
+    "Create questions about Python programming"
   ];
+
+  const handlePromptClick = async (promptText, promptId = null) => {
+    setFormData({ ...formData, prompt: promptText });
+    if (promptId) {
+      try {
+        await trackPromptUsage(promptId);
+      } catch (err) {
+        // Silently fail - prompt is still set
+      }
+    }
+  };
 
   return (
     <div className="create-quiz-container">
       <div className="create-quiz-card">
         <div className="page-header">
-          <h1>✨ Create New Quiz</h1>
-          <p>AI will generate a quiz title and custom questions for you</p>
+          <h1>🤖 Create Your AI-Powered Quiz</h1>
+          <p>Let our intelligent AI craft a personalized quiz tailored to your needs</p>
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -66,20 +87,30 @@ const CreateQuiz = () => {
               name="prompt"
               value={formData.prompt}
               onChange={handleChange}
-              placeholder="Describe what you want to be tested on..."
-              rows="4"
+              placeholder="Tell us what you'd like to learn or test. Be specific for the best results! For example: 'Create a quiz about JavaScript async/await concepts with practical coding scenarios'"
+              rows="5"
               required
             />
+            <p className="helper-text">💡 Tip: More detailed prompts help our AI generate higher-quality, more relevant questions for you.</p>
             <div className="examples">
-              <p className="examples-title">💡 Example prompts:</p>
+              <p className="examples-title">✨ Try these example prompts:</p>
               <ul>
-                {examplePrompts.map((example, index) => (
+                {prompts.map((prompt) => (
                   <li
-                    key={index}
-                    onClick={() => setFormData({ ...formData, prompt: example })}
+                    key={prompt.prompt_id}
+                    onClick={() => handlePromptClick(prompt.prompt_text, prompt.prompt_id)}
                     className="example-item"
                   >
-                    {example}
+                    {prompt.prompt_text}
+                  </li>
+                ))}
+                {prompts.length < 2 && fallbackPrompts.slice(0, 2 - prompts.length).map((prompt, index) => (
+                  <li
+                    key={`fallback-${index}`}
+                    onClick={() => handlePromptClick(prompt, null)}
+                    className="example-item"
+                  >
+                    {prompt}
                   </li>
                 ))}
               </ul>
@@ -136,11 +167,11 @@ const CreateQuiz = () => {
               {loading ? (
                 <>
                   <span className="spinner-small"></span>
-                  Generating Quiz...
+                  AI is Generating Your Quiz...
                 </>
               ) : (
                 <>
-                  ✨ Create Quiz
+                  🚀 Generate Quiz with AI
                 </>
               )}
             </button>
@@ -149,7 +180,7 @@ const CreateQuiz = () => {
 
         {loading && (
           <div className="loading-info">
-            <p>⏳ AI is generating your quiz title and questions... This may take a moment.</p>
+            <p>✨ Our AI is crafting your personalized quiz... This may take a moment.</p>
           </div>
         )}
       </div>

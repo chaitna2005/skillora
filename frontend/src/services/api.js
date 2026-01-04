@@ -28,6 +28,11 @@ export const getUser = async (userId) => {
   return response.data;
 };
 
+export const getUserStats = async (userId) => {
+  const response = await api.get(`/users/${userId}/stats`);
+  return response.data;
+};
+
 // Quiz Management
 export const createQuiz = async (userId, quizData) => {
   const response = await api.post(`/quiz/create?user_id=${userId}`, quizData);
@@ -44,8 +49,17 @@ export const getAssignedQuizzes = async (userId) => {
   return response.data;
 };
 
-export const getQuiz = async (quizId) => {
-  const response = await api.get(`/quiz/${quizId}`);
+export const getQuiz = async (quizId, forTest = false, uqtId = null) => {
+  const params = new URLSearchParams();
+  if (forTest) {
+    params.append('for_test', 'true');
+    if (uqtId) {
+      params.append('uqt_id', uqtId.toString());
+    }
+  }
+  const queryString = params.toString();
+  const url = `/quiz/${quizId}${queryString ? `?${queryString}` : ''}`;
+  const response = await api.get(url);
   return response.data;
 };
 
@@ -74,8 +88,8 @@ export const submitTest = async (testData) => {
   return response.data;
 };
 
-export const getTestResult = async (uqtId) => {
-  const response = await api.get(`/test/result/${uqtId}`);
+export const getTestResult = async (userId, quizId) => {
+  const response = await api.get(`/test/result?user_id=${userId}&quiz_id=${quizId}`);
   return response.data;
 };
 
@@ -88,6 +102,14 @@ export const saveAnswer = async (uqtId, questionId, optionIds) => {
   const response = await api.post(`/test/save-answer/${uqtId}`, {
     question_id: questionId,
     question_option_ids: optionIds
+  });
+  return response.data;
+};
+
+export const getHint = async (questionId, questionText, options) => {
+  const response = await api.post(`/test/hint/${questionId}`, {
+    question_text: questionText,
+    options: options
   });
   return response.data;
 };
@@ -161,6 +183,58 @@ export const bulkDeleteQuizzes = async (userId, ids) => {
 
 export const bulkDeleteAssignedQuizzes = async (userId, ids) => {
   const response = await api.post(`/quiz/assigned/bulk-delete?user_id=${userId}`, { ids });
+  return response.data;
+};
+
+// Example Prompts
+export const getExamplePrompts = async () => {
+  const response = await api.get('/prompts/examples');
+  return response.data;
+};
+
+export const trackPromptUsage = async (promptId) => {
+  const response = await api.post(`/prompts/${promptId}/use`);
+  return response.data;
+};
+
+// Quiz Assignment & Sharing
+export const createShareLink = async (quizId, teacherId) => {
+  const response = await api.post(`/quiz/${quizId}/assign?teacher_id=${teacherId}`);
+  return response.data;
+};
+
+export const getAssignmentInfo = async (token) => {
+  const response = await api.get(`/assignments/${token}`);
+  return response.data;
+};
+
+export const claimAssignment = async (shareToken, userId) => {
+  const response = await api.post(`/assignments/${shareToken}/claim?user_id=${userId}`);
+  return response.data;
+};
+
+export const getAssignmentResults = async (teacherId) => {
+  const response = await api.get(`/quiz/assign/results/${teacherId}`);
+  return response.data;
+};
+
+export const getQuizAnalytics = async (teacherId) => {
+  const response = await api.get(`/quiz/assign/analytics/${teacherId}`);
+  return response.data;
+};
+
+export const getQuestionDifficulty = async (quizId, teacherId) => {
+  const response = await api.get(`/quiz/${quizId}/question-difficulty/${teacherId}`);
+  return response.data;
+};
+
+export const exportQuizResultsCSV = async (teacherId, quizId = null) => {
+  const url = quizId 
+    ? `/quiz/export/results/${teacherId}?quiz_id=${quizId}`
+    : `/quiz/export/results/${teacherId}`;
+  const response = await api.get(url, {
+    responseType: 'blob'
+  });
   return response.data;
 };
 

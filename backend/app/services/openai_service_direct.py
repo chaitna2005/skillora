@@ -559,6 +559,171 @@ IMPORTANT: Always return the corrected_question field, even if no changes are ne
             # Fallback: use first few words of prompt
             words = prompt.split()[:3]
             return " ".join(words).title() + " Quiz"
+    
+    def generate_hint(self, question_text: str, options: List[str]) -> str:
+        """Generate a helpful hint for a quiz question without revealing the answer"""
+        
+        system_prompt = """You are an educational assistant helping students learn. Your role is to provide helpful hints that guide students toward understanding the concept, WITHOUT revealing the correct answer or eliminating options directly.
+
+CRITICAL RULES:
+1. DO NOT mention which option is correct
+2. DO NOT say "option A is wrong" or "eliminate option B"
+3. DO NOT directly state the answer
+4. Focus on:
+   - Explaining the underlying concept or method
+   - Suggesting how to approach the problem
+   - Providing context or background knowledge
+5. Keep hints SHORT (2-3 lines maximum)
+6. Make hints educational and encouraging
+
+Example good hints:
+- "Think about the key principles of [topic] and how they apply here."
+- "Consider what happens when [relevant condition] occurs."
+- "Recall the relationship between [concept A] and [concept B]."
+
+Example BAD hints (DO NOT DO THIS):
+- "The answer is option B"
+- "Option A and C are incorrect"
+- "Choose the option that says [answer]"
+"""
+        
+        options_text = "\n".join([f"- {opt}" for opt in options])
+        
+        user_prompt = f"""Question: {question_text}
+
+Options:
+{options_text}
+
+Provide a helpful hint (2-3 lines) that guides the student toward solving this question without revealing the correct answer. Focus on the concept or method they should consider."""
+        
+        try:
+            result = self._make_request(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=150  # Limit to keep hints short
+            )
+            
+            hint = result["choices"][0]["message"]["content"].strip()
+            # Remove any quotes if LLM wrapped the hint
+            hint = hint.strip('"').strip("'")
+            return hint if hint else self._get_fallback_hint()
+            
+        except Exception as e:
+            print(f"Hint generation error: {e}")
+            return self._get_fallback_hint()
+    
+    def _get_fallback_hint(self) -> str:
+        """Return a generic fallback hint if LLM fails"""
+        return "Think carefully about the key concepts related to this question. Consider what you know about the topic and how it applies here."
+    
+    def generate_question_feedback(
+        self,
+        question_text: str,
+        options: List[str],
+        user_answer: str,
+        correct_answer: str,
+        is_correct: bool
+    ) -> str:
+        """Generate detailed feedback for a question after submission
+        
+        This provides educational feedback explaining why the answer was correct or incorrect,
+        without directly revealing the answer in the first sentence.
+        """
+        
+        system_prompt = """You are a friendly, patient tutor helping a student understand their quiz results. Your role is to provide clear, educational feedback that helps the student learn from their mistakes or reinforces their correct understanding.
+
+CRITICAL RULES:
+1. Use a friendly, encouraging tutor tone
+2. Use simple, clear language (avoid jargon unless necessary)
+3. DO NOT use option letters (A, B, C, D) - refer to options by their content
+4. DO NOT start with "The correct answer is X" - build up to it naturally
+5. Keep feedback SHORT (2-4 lines maximum)
+6. Focus on LEARNING, not just correctness
+
+For CORRECT answers:
+- Provide positive reinforcement
+- Briefly explain WHY the answer is correct
+- Reinforce the concept or method used
+
+For INCORRECT answers:
+- Explain WHY the selected answer is wrong (without being harsh)
+- Explain HOW to approach the question correctly
+- Guide toward understanding the concept
+- Do NOT reveal the correct answer directly in the first sentence
+- Build understanding step by step
+
+Example good feedback (incorrect):
+"Your selected answer focuses on [specific aspect], but this question is asking about [different aspect]. To solve this, consider [concept/method]. The key is understanding [relationship/principle]."
+
+Example good feedback (correct):
+"Excellent! You correctly identified that [concept]. This demonstrates understanding of [principle]. Well done!"
+
+Example BAD feedback (DO NOT DO THIS):
+- "The correct answer is [answer]"
+- "Option A is wrong because..."
+- "You should have chosen [answer]"
+"""
+        
+        user_answer_text = user_answer if user_answer else "No answer provided"
+        correct_answer_text = correct_answer if correct_answer else "Unknown"
+        
+        if is_correct:
+            user_prompt = f"""Question: {question_text}
+
+Options:
+{chr(10).join([f"- {opt}" for opt in options])}
+
+The student selected: "{user_answer_text}"
+This answer is CORRECT.
+
+Provide brief, encouraging feedback (2-4 lines) that:
+- Reinforces why this answer is correct
+- Explains the concept or method used
+- Encourages continued learning"""
+        else:
+            user_prompt = f"""Question: {question_text}
+
+Options:
+{chr(10).join([f"- {opt}" for opt in options])}
+
+The student selected: "{user_answer_text}"
+The correct answer is: "{correct_answer_text}"
+This answer is INCORRECT.
+
+Provide helpful, educational feedback (2-4 lines) that:
+- Explains WHY the selected answer is wrong (without being harsh)
+- Explains HOW to approach the question correctly
+- Guides toward understanding the concept
+- Does NOT start with "The correct answer is..." - build understanding naturally"""
+        
+        try:
+            result = self._make_request(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.7,
+                max_tokens=200  # Limit to keep feedback concise
+            )
+            
+            feedback = result["choices"][0]["message"]["content"].strip()
+            # Remove any quotes if LLM wrapped the feedback
+            feedback = feedback.strip('"').strip("'")
+            return feedback if feedback else self._get_fallback_feedback(is_correct)
+            
+        except Exception as e:
+            print(f"Question feedback generation error: {e}")
+            return self._get_fallback_feedback(is_correct)
+    
+    def _get_fallback_feedback(self, is_correct: bool) -> str:
+        """Return a generic fallback feedback if LLM fails"""
+        if is_correct:
+            return "Great job! Your answer demonstrates a solid understanding of the concept. Keep up the excellent work!"
+        else:
+            return "This question requires careful consideration of the key concepts. Review the related topic and think about how the principles apply to this specific scenario."
 
 
 

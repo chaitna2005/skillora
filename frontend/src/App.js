@@ -10,6 +10,7 @@ import TakeTest from './pages/TakeTest';
 import Results from './pages/Results';
 import MyTests from './pages/MyTests';
 import ViewQuiz from './pages/ViewQuiz';
+import ClaimAssignment from './pages/ClaimAssignment';
 import './App.css';
 
 // Protected Route Component
@@ -82,7 +83,7 @@ function AppContent() {
                 <TakeTest />
               </ProtectedRoute>
             } />
-            <Route path="/results/:uqtId" element={
+            <Route path="/results/:quizId" element={
               <ProtectedRoute>
                 <Results />
               </ProtectedRoute>
@@ -90,6 +91,11 @@ function AppContent() {
             <Route path="/my-tests" element={
               <ProtectedRoute>
                 <MyTests />
+              </ProtectedRoute>
+            } />
+            <Route path="/assign/:token" element={
+              <ProtectedRoute>
+                <ClaimAssignment />
               </ProtectedRoute>
             } />
 

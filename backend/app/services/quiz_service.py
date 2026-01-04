@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional, Set, Tuple
 from psycopg2.extras import RealDictCursor
 from app.models.quiz import QuizModel
 from app.models.question import QuestionModel
+from app.models.prompt import ExamplePromptModel
 from app.services.openai_service_direct import OpenAIService
 from app.services.test_service import TestService
 
@@ -82,8 +83,95 @@ class QuizService:
         quiz = QuizModel.create_quiz(cursor, quiz_data)
         quiz_id = quiz["quiz_id"]
         
-        # Step 3: Save questions and options
+        # Step 2.5: Save prompt to Example_Prompt if conditions are met
+        # Hook: Save prompt for CREATIVE quizzes (all quizzes are CREATIVE)
+        # Conditions: prompt length > 20 AND prompt does not already exist
+        # This must NOT block quiz creation
+        try:
+            if len(prompt) > 20:
+                existing_prompt = ExamplePromptModel.get_prompt_by_text(cursor, prompt)
+                if not existing_prompt:
+                    ExamplePromptModel.create_prompt(cursor, {
+                        "prompt_text": prompt,
+                        "created_by": user_id
+                    })
+        except Exception as e:
+            # Do not block quiz creation if prompt saving fails
+            print(f"[WARNING] Failed to save prompt to Example_Prompt: {e}")
+        
+        # Step 3: Validate and save questions and options
         for question_data in questions:
+            # Validate math question and correct is_correct flags if needed
+            question_text = question_data.get("question_text", "")
+            question_type = question_data.get("question_type", "RADIO")
+            options = question_data.get("options", [])
+            
+            # Check if this is a math question that needs validation
+            is_math = TestService._is_math_question(question_text)
+            
+            if is_math:
+                try:
+                    # Compute correct answer programmatically
+                    correct_answer = TestService._compute_correct_answer(question_text, question_type)
+                    
+                    if correct_answer is not None:
+                        # Find options that match the computed answer
+                        correct_option_indices = []
+                        for i, option in enumerate(options):
+                            option_text = option.get("option_text", "")
+                            option_value = TestService._extract_math_value(option_text)
+                            
+                            if option_value is not None:
+                                if abs(option_value - correct_answer) < 0.0001:
+                                    correct_option_indices.append(i)
+                        
+                        # Override is_correct flags based on computed answer
+                        if correct_option_indices:
+                            # Reset all flags
+                            for option in options:
+                                option["is_correct"] = False
+                            
+                            # Set correct flags
+                            for idx in correct_option_indices:
+                                options[idx]["is_correct"] = True
+                            
+                            # For RADIO, ensure exactly one correct answer
+                            if question_type == "RADIO" and len(correct_option_indices) > 1:
+                                # Keep only the first matching option as correct
+                                for idx in correct_option_indices[1:]:
+                                    options[idx]["is_correct"] = False
+                            
+                            print(f"[VALIDATION] Corrected math question: '{question_text[:50]}...' - Correct answer: {correct_answer}, Correct options: {correct_option_indices}")
+                        else:
+                            print(f"[VALIDATION] WARNING: No options match computed answer {correct_answer} for question: '{question_text[:50]}...'")
+                    else:
+                        print(f"[VALIDATION] WARNING: Cannot compute answer for math question: '{question_text[:50]}...'")
+                except Exception as e:
+                    print(f"[VALIDATION] Error validating math question: {e}")
+                    # Continue with original flags if validation fails
+            
+            # Ensure at least one correct answer exists
+            correct_count = sum(1 for opt in options if opt.get("is_correct", False))
+            if correct_count == 0:
+                print(f"[VALIDATION] WARNING: No correct answers found, marking first option as correct")
+                if options:
+                    options[0]["is_correct"] = True
+            
+            # For RADIO, ensure exactly one correct answer
+            if question_type == "RADIO":
+                if correct_count == 0:
+                    if options:
+                        options[0]["is_correct"] = True
+                elif correct_count > 1:
+                    # Keep only the first correct option
+                    first_correct_found = False
+                    for option in options:
+                        if option.get("is_correct", False):
+                            if first_correct_found:
+                                option["is_correct"] = False
+                            else:
+                                first_correct_found = True
+            
             # Create question
             question = QuestionModel.create_question(cursor, {
                 "quiz_id": quiz_id,
@@ -93,8 +181,8 @@ class QuizService:
             
             question_id = question["question_id"]
             
-            # Create options
-            for option_data in question_data["options"]:
+            # Create options with validated is_correct flags
+            for option_data in options:
                 QuestionModel.create_question_option(cursor, {
                     "question_id": question_id,
                     "option_text": option_data["option_text"],

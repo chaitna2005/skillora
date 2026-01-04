@@ -23,7 +23,9 @@ class SaveAnswerRequest(BaseModel):
 
 
 class TestSubmit(BaseModel):
-    uqt_id: int
+    uqt_id: Optional[int] = None  # Optional - will use user_id + quiz_id if not provided
+    user_id: int  # Required to identify user
+    quiz_id: int  # Required to identify quiz
     answers: List[TestAnswer]
 
 
@@ -51,6 +53,7 @@ class TestResultDetail(BaseModel):
     user_answers: List[str]
     correct_answers: List[str]
     is_correct: bool
+    feedback: Optional[str] = None  # AI-generated explanation for the answer
 
 
 class TestResult(BaseModel):
@@ -73,4 +76,14 @@ class TestSummary(BaseModel):
     total_tests_pending: int
     average_score: Optional[float] = None
     recent_tests: List[TestResponse] = []
+
+
+class HintRequest(BaseModel):
+    question_text: str
+    options: List[str]  # List of option texts (without revealing which is correct)
+
+
+class HintResponse(BaseModel):
+    hint: str
+    question_id: int
 

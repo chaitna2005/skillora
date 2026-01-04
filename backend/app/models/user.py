@@ -2,8 +2,9 @@
 User Model
 Handles user-related database operations
 """
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from psycopg2.extras import RealDictCursor
+from datetime import date
 
 
 class UserModel:
@@ -35,13 +36,60 @@ class UserModel:
     def get_user_by_id(cursor: RealDictCursor, user_id: int) -> Optional[Dict]:
         """Get user by ID"""
         query = """
-            SELECT user_id, first_name, last_name, username, email_id, role, created_at
+            SELECT user_id, first_name, last_name, username, email_id, role, created_at,
+                   quiz_completion_count, current_streak, longest_streak, last_active_date, unlocked_badges
             FROM "User"
             WHERE user_id = %s
         """
         cursor.execute(query, (user_id,))
         result = cursor.fetchone()
         return dict(result) if result else None
+    
+    @staticmethod
+    def get_user_stats(cursor: RealDictCursor, user_id: int) -> Optional[Dict]:
+        """Get user stats (badges and streaks)"""
+        query = """
+            SELECT quiz_completion_count, current_streak, longest_streak, last_active_date, unlocked_badges
+            FROM "User"
+            WHERE user_id = %s
+        """
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchone()
+        return dict(result) if result else None
+    
+    @staticmethod
+    def update_user_stats(
+        cursor: RealDictCursor,
+        user_id: int,
+        quiz_completion_count: int,
+        current_streak: int,
+        longest_streak: int,
+        last_active_date: date,
+        unlocked_badges: List[str]
+    ) -> bool:
+        """Update user stats after quiz completion"""
+        query = """
+            UPDATE "User"
+            SET quiz_completion_count = %s,
+                current_streak = %s,
+                longest_streak = %s,
+                last_active_date = %s,
+                unlocked_badges = %s
+            WHERE user_id = %s
+        """
+        try:
+            cursor.execute(query, (
+                quiz_completion_count,
+                current_streak,
+                longest_streak,
+                last_active_date,
+                unlocked_badges,
+                user_id
+            ))
+            return True
+        except Exception as e:
+            print(f"Error updating user stats: {e}")
+            return False
     
     @staticmethod
     def get_user_by_email(cursor: RealDictCursor, email: str) -> Optional[Dict]:
