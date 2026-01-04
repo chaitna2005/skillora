@@ -54,109 +54,88 @@ class OpenAIService:
         
         system_prompt = """You are an expert quiz creator. Generate clear, educational quiz questions based on the given topic.
 
-CRITICAL RULES - READ CAREFULLY:
-1. You MUST generate EXACTLY the number of questions specified in the user request - NO MORE, NO LESS
-2. Before responding, COUNT the questions in your JSON response to ensure it matches the requested number
-3. Each question must have exactly 4 options
-4. EVERY question MUST have at least one correct answer marked
-5. For RADIO type: EXACTLY ONE correct answer (mark exactly one option as "is_correct": true, all others as false)
-6. For CHECKLIST type: ONE OR MORE correct answers (mark at least one option as "is_correct": true)
-7. Questions should be unambiguous and educational
-8. Return ONLY valid JSON, no additional text or explanations
+CRITICAL RULES - STRICTLY FOLLOW THESE:
 
-MANDATORY ANSWER REQUIREMENTS:
-- EVERY question MUST have at least one option with "is_correct": true
-- For RADIO questions: Count the "is_correct": true flags - there MUST be exactly 1
-- For CHECKLIST questions: Count the "is_correct": true flags - there MUST be at least 1
-- NEVER leave all options as "is_correct": false
-- NEVER mark all options as "is_correct": true for RADIO questions
+1. QUESTION COUNT:
+   - You MUST generate EXACTLY the number of questions specified in the user request
+   - NO MORE, NO LESS
+   - Count the questions in your array before responding
 
-MATHEMATICS-SPECIFIC RULES (if topic involves math):
-- For mathematical problems, you MUST verify that the correct answer is mathematically accurate
-- Double-check all calculations before marking answers as correct
-- For complex mathematics (calculus, algebra, etc.), ensure the correct answer option is the exact solution
-- If a question asks to solve an equation, verify the solution is correct by substitution
-- For numerical answers, ensure precision matches the question requirements
-- Wrong answer options should be plausible but clearly incorrect (common mistakes are acceptable)
-- Show mathematical expressions clearly using standard notation
+2. QUESTION STRUCTURE (MANDATORY):
+   - Each question MUST have exactly 4 options
+   - Each option MUST have "option_text" and "is_correct" fields
+   - The "is_correct" field MUST be a boolean (true or false, NOT a string)
 
-STEP-BY-STEP PROCESS:
-1. Read the requested number of questions (e.g., "5 questions")
-2. Generate that EXACT number of questions
-3. For EACH question:
-   a. Ensure it has exactly 4 options
-   b. Mark at least one option as "is_correct": true
-   c. For RADIO: ensure exactly ONE "is_correct": true
-   d. For CHECKLIST: ensure at least ONE "is_correct": true
-4. Count the questions in your "questions" array
-5. Verify the count matches the requested number
-6. Verify every question has correct answers marked
-7. Only then, return the JSON response
+3. CORRECT ANSWERS (CRITICAL - THIS IS MANDATORY):
+   - EVERY question MUST have AT LEAST ONE correct answer marked as "is_correct": true
+   - For RADIO type: EXACTLY ONE option must have "is_correct": true, all others must be false
+   - For CHECKLIST type: ONE OR MORE options must have "is_correct": true
+   - NEVER leave all options as false - this is an INVALID question
+   - NEVER leave is_correct undefined or null - it MUST be true or false
 
-STRICT RESPONSE FORMAT (MUST FOLLOW EXACTLY):
+4. RESPONSE FORMAT:
+   - Return ONLY valid JSON, no additional text
+   - Use the exact structure shown below
+   - DO NOT add extra fields or change field names
+
+5. MATHEMATICS ACCURACY (if topic involves math):
+   - Verify all mathematical answers are correct before marking them
+   - Double-check calculations
+   - Ensure correct answer options are mathematically accurate
+
+VALIDATION CHECKLIST (Check before responding):
+✓ Question count matches requested number?
+✓ Every question has exactly 4 options?
+✓ Every option has "option_text" and "is_correct" fields?
+✓ Every question has AT LEAST ONE option with "is_correct": true?
+✓ RADIO questions have EXACTLY ONE correct answer?
+✓ CHECKLIST questions have AT LEAST ONE correct answer?
+✓ All "is_correct" values are boolean (true/false)?
+✓ Response is valid JSON?
+
+MANDATORY JSON FORMAT:
 {
     "questions": [
         {
-            "question_text": "What is 2 + 2?",
+            "question_text": "Your question text here?",
             "question_type": "RADIO",
             "options": [
-                {"option_text": "3", "is_correct": false},
-                {"option_text": "4", "is_correct": true},
-                {"option_text": "5", "is_correct": false},
-                {"option_text": "6", "is_correct": false}
-            ]
-        },
-        {
-            "question_text": "Which numbers are even?",
-            "question_type": "CHECKLIST",
-            "options": [
-                {"option_text": "2", "is_correct": true},
-                {"option_text": "3", "is_correct": false},
-                {"option_text": "4", "is_correct": true},
-                {"option_text": "5", "is_correct": false}
+                {"option_text": "First option", "is_correct": false},
+                {"option_text": "Second option (correct)", "is_correct": true},
+                {"option_text": "Third option", "is_correct": false},
+                {"option_text": "Fourth option", "is_correct": false}
             ]
         }
     ]
 }
 
-IMPORTANT: Before returning your response, verify:
-- Exact question count matches requested number
-- Every question has exactly 4 options
-- Every RADIO question has exactly 1 "is_correct": true
-- Every CHECKLIST question has at least 1 "is_correct": true
-- No question has all "is_correct": false
-"""
+IMPORTANT: If you generate a question where NO option is marked as correct, the question is INVALID and will be rejected. ALWAYS mark at least one correct answer."""
         
-        user_prompt = f"""Create EXACTLY {total_questions} quiz questions on the following topic.
+        user_prompt = f"""Generate EXACTLY {total_questions} quiz questions with the following requirements:
 
 TOPIC: {prompt}
 DIFFICULTY LEVEL: {difficulty_level}
 NUMBER OF QUESTIONS REQUIRED: {total_questions}
 
-CRITICAL REQUIREMENTS:
-1. Generate EXACTLY {total_questions} questions - count them before responding
+MANDATORY REQUIREMENTS:
+1. Generate EXACTLY {total_questions} questions (count them!)
 2. Each question MUST have exactly 4 options
-3. EVERY question MUST have at least one correct answer marked with "is_correct": true
-4. For RADIO questions: mark EXACTLY ONE option as "is_correct": true
-5. For CHECKLIST questions: mark AT LEAST ONE option as "is_correct": true
-6. NEVER leave all options as "is_correct": false for any question
+3. EVERY question MUST have at least one correct answer marked as "is_correct": true
+4. NEVER leave all options as false
 
 Question type distribution:
-- Approximately 70% should be RADIO type (single correct answer - exactly 1 "is_correct": true)
-- Approximately 30% should be CHECKLIST type (multiple correct answers - at least 1 "is_correct": true)
+- Approximately 70% RADIO type (exactly ONE correct answer per question)
+- Approximately 30% CHECKLIST type (multiple correct answers per question)
 
-Difficulty level: {difficulty_level}
+Difficulty: {difficulty_level}
 
-If this is a mathematics topic, ensure all correct answers are mathematically verified and accurate.
+CRITICAL REMINDERS:
+- Each option must have both "option_text" and "is_correct" fields
+- "is_correct" must be boolean true or false (not string, not null)
+- At least one option per question MUST be marked as correct
+- For mathematics, verify your answers are correct before marking them
 
-VALIDATION CHECKLIST (verify before responding):
-✓ Generated exactly {total_questions} questions
-✓ Each question has exactly 4 options
-✓ Each RADIO question has exactly 1 "is_correct": true
-✓ Each CHECKLIST question has at least 1 "is_correct": true
-✓ No question has all options as "is_correct": false
-
-Return ONLY valid JSON following the strict format specified in the system prompt."""
+Generate {total_questions} valid questions following the exact JSON format from the system prompt."""
 
         print(f"[OPENAI_SERVICE] System prompt length: {len(system_prompt)} characters")
         print(f"[OPENAI_SERVICE] User prompt length: {len(user_prompt)} characters")
@@ -210,11 +189,13 @@ Return ONLY valid JSON following the strict format specified in the system promp
             validated_count = 0
             for idx, q in enumerate(questions):
                 try:
+                    # Check required fields
                     if "question_text" not in q or "question_type" not in q or "options" not in q:
                         print(f"[OPENAI_SERVICE] ERROR: Question {idx+1} missing required fields")
                         print(f"[OPENAI_SERVICE] Question {idx+1} keys: {list(q.keys())}")
                         raise ValueError(f"Invalid question format from OpenAI - question {idx+1} missing required fields")
                     
+                    # Validate question type
                     if q["question_type"] not in ["RADIO", "CHECKLIST"]:
                         print(f"[OPENAI_SERVICE] WARNING: Question {idx+1} has invalid type '{q['question_type']}', defaulting to RADIO")
                         q["question_type"] = "RADIO"  # Default fallback
@@ -225,41 +206,51 @@ Return ONLY valid JSON following the strict format specified in the system promp
                         print(f"[OPENAI_SERVICE] ERROR: Question {idx+1} has {options_count} options, expected 4")
                         raise ValueError(f"Question {idx+1} must have exactly 4 options, found {options_count}")
                     
-                    # Validate correct answers - CRITICAL CHECK
-                    correct_count = sum(1 for opt in q["options"] if opt.get("is_correct", False))
-                    question_type = q["question_type"]
+                    # Validate each option has required fields and correct type
+                    for opt_idx, opt in enumerate(q["options"]):
+                        if "option_text" not in opt:
+                            print(f"[OPENAI_SERVICE] ERROR: Question {idx+1}, Option {opt_idx+1} missing 'option_text'")
+                            raise ValueError(f"Question {idx+1}, Option {opt_idx+1} missing 'option_text'")
+                        
+                        if "is_correct" not in opt:
+                            print(f"[OPENAI_SERVICE] WARNING: Question {idx+1}, Option {opt_idx+1} missing 'is_correct', defaulting to false")
+                            opt["is_correct"] = False
+                        
+                        # Ensure is_correct is boolean
+                        if not isinstance(opt["is_correct"], bool):
+                            print(f"[OPENAI_SERVICE] WARNING: Question {idx+1}, Option {opt_idx+1} has non-boolean is_correct value: {opt['is_correct']}")
+                            # Convert to boolean
+                            opt["is_correct"] = bool(opt["is_correct"])
                     
-                    if correct_count == 0:
-                        print(f"[OPENAI_SERVICE] ERROR: Question {idx+1} ({question_type}) has NO correct answers marked!")
+                    # CRITICAL: Ensure at least one correct answer
+                    has_correct = any(opt.get("is_correct", False) for opt in q["options"])
+                    if not has_correct:
+                        print(f"[OPENAI_SERVICE] CRITICAL WARNING: Question {idx+1} has NO correct answer! AI did not mark any option as correct.")
                         print(f"[OPENAI_SERVICE] Question text: {q.get('question_text', '')[:100]}")
-                        print(f"[OPENAI_SERVICE] All options marked as incorrect - this violates the strict format requirement")
-                        print(f"[OPENAI_SERVICE] FIXING: Setting first option as correct")
+                        print(f"[OPENAI_SERVICE] Fixing by marking first option as correct")
                         q["options"][0]["is_correct"] = True
-                        correct_count = 1
                     
                     # For RADIO type, ensure exactly one correct answer
-                    if question_type == "RADIO":
+                    if q["question_type"] == "RADIO":
+                        correct_count = sum(1 for opt in q["options"] if opt.get("is_correct", False))
                         if correct_count != 1:
-                            print(f"[OPENAI_SERVICE] ERROR: Question {idx+1} (RADIO) has {correct_count} correct answers, expected exactly 1")
-                            print(f"[OPENAI_SERVICE] Question text: {q.get('question_text', '')[:100]}")
-                            print(f"[OPENAI_SERVICE] FIXING: Setting exactly one correct answer (first option)")
-                            # Fix: set first option to true, others to false
-                            for i, opt in enumerate(q["options"]):
-                                opt["is_correct"] = (i == 0)
-                            correct_count = 1
+                            print(f"[OPENAI_SERVICE] WARNING: Question {idx+1} (RADIO) has {correct_count} correct answers, fixing to 1")
+                            # Fix: keep first correct, set others to false
+                            first_correct_found = False
+                            for opt in q["options"]:
+                                if opt.get("is_correct", False):
+                                    if not first_correct_found:
+                                        opt["is_correct"] = True
+                                        first_correct_found = True
+                                    else:
+                                        opt["is_correct"] = False
                     
                     # For CHECKLIST type, ensure at least one correct answer
-                    if question_type == "CHECKLIST":
+                    if q["question_type"] == "CHECKLIST":
+                        correct_count = sum(1 for opt in q["options"] if opt.get("is_correct", False))
                         if correct_count == 0:
-                            print(f"[OPENAI_SERVICE] ERROR: Question {idx+1} (CHECKLIST) has no correct answers, expected at least 1")
-                            print(f"[OPENAI_SERVICE] Question text: {q.get('question_text', '')[:100]}")
-                            print(f"[OPENAI_SERVICE] FIXING: Setting first option as correct")
+                            print(f"[OPENAI_SERVICE] WARNING: Question {idx+1} (CHECKLIST) has no correct answers, fixing")
                             q["options"][0]["is_correct"] = True
-                            correct_count = 1
-                    
-                    # Log successful validation
-                    if correct_count > 0:
-                        print(f"[OPENAI_SERVICE] Question {idx+1} ({question_type}) validated: {correct_count} correct answer(s)")
                     
                     validated_count += 1
                 except Exception as e:
