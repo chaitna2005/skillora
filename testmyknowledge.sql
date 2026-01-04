@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS "QuestionOption" CASCADE;
 DROP TABLE IF EXISTS "Question" CASCADE;
 DROP TABLE IF EXISTS "Quiz_Assignment" CASCADE;
 DROP TABLE IF EXISTS "Quiz" CASCADE;
+DROP TABLE IF EXISTS "User_Stats" CASCADE;
 DROP TABLE IF EXISTS "User" CASCADE;
 
 -- ================================================
@@ -25,6 +26,21 @@ CREATE TABLE "User" (
     email_id VARCHAR(255) UNIQUE NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('TEACHER', 'STUDENT')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ================================================
+-- User Stats Table
+-- Stores user gamification stats (badges and streaks)
+-- ================================================
+CREATE TABLE "User_Stats" (
+    user_id INTEGER PRIMARY KEY REFERENCES "User"(user_id) ON DELETE CASCADE,
+    quiz_completion_count INTEGER DEFAULT 0,
+    current_streak INTEGER DEFAULT 0,
+    longest_streak INTEGER DEFAULT 0,
+    last_active_date DATE,
+    unlocked_badges TEXT[] DEFAULT ARRAY[]::TEXT[],
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ================================================
@@ -114,6 +130,7 @@ CREATE INDEX idx_user_quiz_take_quiz_id ON "User_Quiz_Take"(quiz_id);
 CREATE INDEX idx_quiz_assignment_user_id ON "Quiz_Assignment"(user_id);
 CREATE INDEX idx_quiz_assignment_quiz_id ON "Quiz_Assignment"(quiz_id);
 CREATE INDEX idx_qtqa_uqt_id ON "Quiz_Take_Question_Answers"(uqt_id);
+CREATE INDEX idx_user_stats_last_active_date ON "User_Stats"(last_active_date);
 
 -- ================================================
 -- Insert Sample Data (Optional - for testing)

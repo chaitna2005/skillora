@@ -108,17 +108,9 @@ def get_user(user_id: int, cursor: RealDictCursor = Depends(get_db)):
 def get_user_stats(user_id: int, cursor: RealDictCursor = Depends(get_db)):
     """Get user stats (badges and streaks)"""
     
-    stats = UserModel.get_user_stats(cursor, user_id)
+    from app.models.user_stats import UserStatsModel
     
-    if not stats:
-        # Return default stats if user not found or stats not initialized
-        return UserStatsResponse(
-            quiz_completion_count=0,
-            current_streak=0,
-            longest_streak=0,
-            last_active_date=None,
-            unlocked_badges=[]
-        )
+    stats = UserStatsModel.get_or_create_user_stats(cursor, user_id)
     
     return UserStatsResponse(
         quiz_completion_count=stats.get("quiz_completion_count", 0) or 0,

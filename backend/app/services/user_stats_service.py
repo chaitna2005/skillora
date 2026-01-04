@@ -5,7 +5,7 @@ Handles badge and streak logic for gamification
 from typing import List, Dict, Optional, Tuple
 from datetime import date, timedelta, datetime
 from psycopg2.extras import RealDictCursor
-from app.models.user import UserModel
+from app.models.user_stats import UserStatsModel
 
 
 class UserStatsService:
@@ -102,16 +102,8 @@ class UserStatsService:
                 - newly_unlocked_badges (list of badge names)
         """
         try:
-            # Get current stats
-            stats = UserModel.get_user_stats(cursor, user_id)
-            if not stats:
-                print(f"[WARN] User {user_id} not found for stats update")
-                return {
-                    "new_completion_count": 0,
-                    "new_current_streak": 0,
-                    "new_longest_streak": 0,
-                    "newly_unlocked_badges": []
-                }
+            # Get or create user stats
+            stats = UserStatsModel.get_or_create_user_stats(cursor, user_id)
             
             current_count = stats.get("quiz_completion_count", 0) or 0
             current_streak = stats.get("current_streak", 0) or 0
@@ -141,7 +133,7 @@ class UserStatsService:
             )
             
             # Update database
-            success = UserModel.update_user_stats(
+            success = UserStatsModel.update_user_stats(
                 cursor,
                 user_id,
                 new_completion_count,

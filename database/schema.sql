@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS "QuestionOption" CASCADE;
 DROP TABLE IF EXISTS "Question" CASCADE;
 DROP TABLE IF EXISTS "Quiz_Assignment" CASCADE;
 DROP TABLE IF EXISTS "Quiz" CASCADE;
+DROP TABLE IF EXISTS "User_Stats" CASCADE;
 DROP TABLE IF EXISTS "User" CASCADE;
 
 -- ================================================
@@ -28,6 +29,21 @@ CREATE TABLE "User" (
 );
 
 -- ================================================
+-- User Stats Table
+-- Stores user gamification stats (badges and streaks)
+-- ================================================
+CREATE TABLE "User_Stats" (
+    user_id INTEGER PRIMARY KEY REFERENCES "User"(user_id) ON DELETE CASCADE,
+    quiz_completion_count INTEGER DEFAULT 0,
+    current_streak INTEGER DEFAULT 0,
+    longest_streak INTEGER DEFAULT 0,
+    last_active_date DATE,
+    unlocked_badges TEXT[] DEFAULT ARRAY[]::TEXT[],
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ================================================
 -- Quiz Table
 -- Stores quiz metadata
 -- ================================================
@@ -40,6 +56,20 @@ CREATE TABLE "Quiz" (
     quiz_name VARCHAR(255) NOT NULL,
     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ================================================
+-- Example Prompt Table
+-- Stores reusable community prompts for creative quizzes
+-- ================================================
+CREATE TABLE "Example_Prompt" (
+    prompt_id SERIAL PRIMARY KEY,
+    prompt_text TEXT NOT NULL UNIQUE,
+    created_by INTEGER REFERENCES "User"(user_id) ON DELETE SET NULL,
+    usage_count INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 
 -- ================================================
 -- Quiz Assignment Table
