@@ -442,10 +442,9 @@ class TestService:
                             if not is_correct:
                                 is_correct = user_selected_id in correct_option_ids
             else:  # CHECKLIST
-                # CHECKLIST: Mark as correct if user selected at least one correct option
-                # Partial correctness is allowed - selecting correct options is rewarded
-                # Extra incorrect selections do not automatically fail the question
-                is_correct = len(user_option_ids & correct_option_ids) > 0
+                # CHECKLIST: Exact match required - user must select ALL correct options and NO incorrect options
+                # No partial marks
+                is_correct = user_option_ids == correct_option_ids
             
             if is_correct:
                 total_correct += 1
