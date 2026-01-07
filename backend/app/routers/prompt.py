@@ -14,9 +14,12 @@ router = APIRouter(prefix="/prompts", tags=["Prompts"])
 
 
 @router.get("/examples", response_model=List[ExamplePromptResponse])
-def get_example_prompts(cursor: RealDictCursor = Depends(get_db)):
-    """Get all active example prompts ordered by usage_count DESC, created_at DESC"""
-    prompts = ExamplePromptModel.get_active_prompts(cursor)
+def get_example_prompts(
+    user_id: int,
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Get active example prompts created by the specified user"""
+    prompts = ExamplePromptModel.get_user_prompts(cursor, user_id)
     return prompts
 
 

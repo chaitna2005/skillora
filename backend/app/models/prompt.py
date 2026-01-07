@@ -44,6 +44,18 @@ class ExamplePromptModel:
         return [dict(row) for row in cursor.fetchall()]
     
     @staticmethod
+    def get_user_prompts(cursor: RealDictCursor, user_id: int) -> List[Dict]:
+        """Get active example prompts created by a specific user"""
+        query = """
+            SELECT prompt_id, prompt_text, created_by, usage_count, is_active, created_at
+            FROM "Example_Prompt"
+            WHERE is_active = TRUE AND created_by = %s
+            ORDER BY usage_count DESC, created_at DESC
+        """
+        cursor.execute(query, (user_id,))
+        return [dict(row) for row in cursor.fetchall()]
+    
+    @staticmethod
     def increment_usage_count(cursor: RealDictCursor, prompt_id: int) -> Optional[Dict]:
         """Increment usage_count for a prompt"""
         query = """

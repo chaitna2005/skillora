@@ -187,8 +187,10 @@ export const bulkDeleteAssignedQuizzes = async (userId, ids) => {
 };
 
 // Example Prompts
-export const getExamplePrompts = async () => {
-  const response = await api.get('/prompts/examples');
+export const getExamplePrompts = async (userId) => {
+  const response = await api.get('/prompts/examples', {
+    params: { user_id: userId }
+  });
   return response.data;
 };
 

@@ -18,15 +18,18 @@ const CreateQuiz = () => {
 
   useEffect(() => {
     const fetchPrompts = async () => {
+      if (!user?.user_id) return;
+      
       try {
-        const fetchedPrompts = await getExamplePrompts();
+        const fetchedPrompts = await getExamplePrompts(user.user_id);
         setPrompts(fetchedPrompts || []);
       } catch (err) {
         // Silently fail - no prompts will be shown
+        setPrompts([]);
       }
     };
     fetchPrompts();
-  }, []);
+  }, [user]);
 
   const handleChange = (e) => {
     setFormData({
@@ -50,11 +53,6 @@ const CreateQuiz = () => {
       setLoading(false);
     }
   };
-
-  const fallbackPrompts = [
-    "Test me on World War II history",
-    "Create questions about Python programming"
-  ];
 
   const handlePromptClick = async (promptText, promptId = null) => {
     setFormData({ ...formData, prompt: promptText });
@@ -92,29 +90,22 @@ const CreateQuiz = () => {
               required
             />
             <p className="helper-text">💡 Tip: More detailed prompts help our AI generate higher-quality, more relevant questions for you.</p>
-            <div className="examples">
-              <p className="examples-title">✨ Try these example prompts:</p>
-              <ul>
-                {prompts.map((prompt) => (
-                  <li
-                    key={prompt.prompt_id}
-                    onClick={() => handlePromptClick(prompt.prompt_text, prompt.prompt_id)}
-                    className="example-item"
-                  >
-                    {prompt.prompt_text}
-                  </li>
-                ))}
-                {prompts.length < 2 && fallbackPrompts.slice(0, 2 - prompts.length).map((prompt, index) => (
-                  <li
-                    key={`fallback-${index}`}
-                    onClick={() => handlePromptClick(prompt, null)}
-                    className="example-item"
-                  >
-                    {prompt}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {prompts.length > 0 && (
+              <div className="examples">
+                <p className="examples-title">✨ Try these example prompts:</p>
+                <ul>
+                  {prompts.map((prompt) => (
+                    <li
+                      key={prompt.prompt_id}
+                      onClick={() => handlePromptClick(prompt.prompt_text, prompt.prompt_id)}
+                      className="example-item"
+                    >
+                      {prompt.prompt_text}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="form-row">
