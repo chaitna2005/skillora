@@ -199,6 +199,20 @@ export const trackPromptUsage = async (promptId) => {
   return response.data;
 };
 
+export const deletePrompt = async (promptId, userId) => {
+  const response = await api.delete(`/prompts/${promptId}`, {
+    params: { user_id: userId }
+  });
+  return response.data;
+};
+
+export const deletePromptsBulk = async (promptIds, userId) => {
+  const response = await api.post('/prompts/bulk-delete', promptIds, {
+    params: { user_id: userId }
+  });
+  return response.data;
+};
+
 // Quiz Assignment & Sharing
 export const createShareLink = async (quizId, teacherId) => {
   const response = await api.post(`/quiz/${quizId}/assign?teacher_id=${teacherId}`);

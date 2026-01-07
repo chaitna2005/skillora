@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { createQuiz, getExamplePrompts, trackPromptUsage } from '../services/api';
+import { createQuiz, getExamplePrompts, trackPromptUsage, deletePromptsBulk } from '../services/api';
 import '../styles/CreateQuiz.css';
 
 const CreateQuiz = () => {
@@ -15,6 +15,7 @@ const CreateQuiz = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [prompts, setPrompts] = useState([]);
+  const [selectedPrompts, setSelectedPrompts] = useState([]);
 
   useEffect(() => {
     const fetchPrompts = async () => {
@@ -22,7 +23,24 @@ const CreateQuiz = () => {
       
       try {
         const fetchedPrompts = await getExamplePrompts(user.user_id);
-        setPrompts(fetchedPrompts || []);
+        
+        // Safety: Deduplicate and limit to 10 prompts (newest first)
+        if (fetchedPrompts && Array.isArray(fetchedPrompts)) {
+          const uniquePrompts = [];
+          const seenTexts = new Set();
+          
+          for (const prompt of fetchedPrompts) {
+            if (!seenTexts.has(prompt.prompt_text)) {
+              seenTexts.add(prompt.prompt_text);
+              uniquePrompts.push(prompt);
+            }
+          }
+          
+          // Limit to 10
+          setPrompts(uniquePrompts.slice(0, 10));
+        } else {
+          setPrompts([]);
+        }
       } catch (err) {
         // Silently fail - no prompts will be shown
         setPrompts([]);
@@ -65,6 +83,54 @@ const CreateQuiz = () => {
     }
   };
 
+  const handleSelectPrompt = (promptId) => {
+    setSelectedPrompts(prev => 
+      prev.includes(promptId) 
+        ? prev.filter(id => id !== promptId)
+        : [...prev, promptId]
+    );
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedPrompts.length === 0) return;
+    
+    if (!window.confirm(`Delete ${selectedPrompts.length} selected prompt(s)?`)) {
+      return;
+    }
+
+    try {
+      await deletePromptsBulk(selectedPrompts, user.user_id);
+      // Refresh prompts
+      const fetchedPrompts = await getExamplePrompts(user.user_id);
+      
+      // Safety: Deduplicate and limit to 10
+      if (fetchedPrompts && Array.isArray(fetchedPrompts)) {
+        const uniquePrompts = [];
+        const seenTexts = new Set();
+        
+        for (const prompt of fetchedPrompts) {
+          if (!seenTexts.has(prompt.prompt_text)) {
+            seenTexts.add(prompt.prompt_text);
+            uniquePrompts.push(prompt);
+          }
+        }
+        
+        setPrompts(uniquePrompts.slice(0, 10));
+      } else {
+        setPrompts([]);
+      }
+      
+      setSelectedPrompts([]);
+    } catch (err) {
+      alert('Failed to delete prompts. Please try again.');
+    }
+  };
+
+  const truncateText = (text, maxLength = 120) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
   return (
     <div className="create-quiz-container">
       <div className="create-quiz-card">
@@ -92,18 +158,72 @@ const CreateQuiz = () => {
             <p className="helper-text">💡 Tip: More detailed prompts help our AI generate higher-quality, more relevant questions for you.</p>
             {prompts.length > 0 && (
               <div className="examples">
-                <p className="examples-title">✨ Try these example prompts:</p>
-                <ul>
-                  {prompts.map((prompt) => (
-                    <li
-                      key={prompt.prompt_id}
-                      onClick={() => handlePromptClick(prompt.prompt_text, prompt.prompt_id)}
-                      className="example-item"
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <p className="examples-title" style={{ margin: 0 }}>✨ Your recent prompts (max 10):</p>
+                  {selectedPrompts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteSelected}
+                      className="delete-prompts-btn"
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        backgroundColor: '#f44336',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontWeight: '500'
+                      }}
                     >
-                      {prompt.prompt_text}
-                    </li>
+                      🗑️ Delete ({selectedPrompts.length})
+                    </button>
+                  )}
+                </div>
+                <div className="prompts-list">
+                  {prompts.map((prompt) => (
+                    <div
+                      key={prompt.prompt_id}
+                      className="prompt-item"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '8px',
+                        padding: '8px',
+                        borderRadius: '6px',
+                        backgroundColor: selectedPrompts.includes(prompt.prompt_id) ? '#f0f0f0' : 'transparent',
+                        border: '1px solid #e0e0e0',
+                        marginBottom: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPrompts.includes(prompt.prompt_id)}
+                        onChange={() => handleSelectPrompt(prompt.prompt_id)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ 
+                          marginTop: '2px',
+                          cursor: 'pointer',
+                          flexShrink: 0
+                        }}
+                      />
+                      <div
+                        onClick={() => handlePromptClick(prompt.prompt_text, prompt.prompt_id)}
+                        style={{
+                          flex: 1,
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          lineHeight: '1.4',
+                          color: '#333'
+                        }}
+                        title={prompt.prompt_text}
+                      >
+                        {truncateText(prompt.prompt_text, 120)}
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>

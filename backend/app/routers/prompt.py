@@ -34,3 +34,33 @@ def use_prompt(prompt_id: int, cursor: RealDictCursor = Depends(get_db)):
         )
     return prompt
 
+
+@router.delete("/{prompt_id}")
+def delete_prompt(
+    prompt_id: int,
+    user_id: int,
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Delete a specific prompt (only if owned by user)"""
+    deleted = ExamplePromptModel.delete_prompt(cursor, prompt_id, user_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Prompt not found or you don't have permission to delete it"
+        )
+    return {"message": "Prompt deleted successfully"}
+
+
+@router.post("/bulk-delete")
+def delete_prompts_bulk(
+    prompt_ids: List[int],
+    user_id: int,
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Delete multiple prompts (only if owned by user)"""
+    deleted_count = ExamplePromptModel.delete_prompts_bulk(cursor, prompt_ids, user_id)
+    return {
+        "message": f"Successfully deleted {deleted_count} prompt(s)",
+        "deleted_count": deleted_count
+    }
+

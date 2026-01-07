@@ -65,14 +65,26 @@ class QuizService:
         quiz = QuizModel.create_quiz(cursor, quiz_data)
         quiz_id = quiz["quiz_id"]
         
-        # Step 2.5: Save prompt to Example_Prompt if conditions are met
+        # Step 2.5: Save prompt to Example_Prompt with 10-prompt limit per user (FIFO)
         # Hook: Save prompt for CREATIVE quizzes (all quizzes are CREATIVE)
-        # Conditions: prompt length > 20 AND prompt does not already exist
+        # Conditions: prompt length > 20
         # This must NOT block quiz creation
         try:
             if len(prompt) > 20:
-                existing_prompt = ExamplePromptModel.get_prompt_by_text(cursor, prompt)
-                if not existing_prompt:
+                # Check if this exact prompt already exists for this user
+                existing_prompt = ExamplePromptModel.get_user_prompt_by_text(cursor, prompt, user_id)
+                
+                if existing_prompt:
+                    # Duplicate: Update timestamp to move to top
+                    ExamplePromptModel.update_prompt_timestamp(cursor, existing_prompt['prompt_id'])
+                else:
+                    # New prompt: Check if user has 10 or more prompts
+                    prompt_count = ExamplePromptModel.get_user_prompt_count(cursor, user_id)
+                    if prompt_count >= 10:
+                        # Delete oldest prompt (FIFO)
+                        ExamplePromptModel.delete_oldest_user_prompt(cursor, user_id)
+                    
+                    # Create new prompt
                     ExamplePromptModel.create_prompt(cursor, {
                         "prompt_text": prompt,
                         "created_by": user_id
