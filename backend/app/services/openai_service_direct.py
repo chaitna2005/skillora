@@ -633,38 +633,40 @@ Provide a helpful hint (2-3 lines) that guides the student toward solving this q
         without directly revealing the answer in the first sentence.
         """
         
-        system_prompt = """You are a friendly, patient tutor helping a student understand their quiz results. Your role is to provide clear, educational feedback that helps the student learn from their mistakes or reinforces their correct understanding.
+        system_prompt = """You are a topic expert providing factual explanations. You must explain the specific concept/topic being tested.
 
-CRITICAL RULES:
-1. Use a friendly, encouraging tutor tone
-2. Use simple, clear language (avoid jargon unless necessary)
-3. DO NOT use option letters (A, B, C, D) - refer to options by their content
-4. DO NOT start with "The correct answer is X" - build up to it naturally
-5. Keep feedback SHORT (2-4 lines maximum)
-6. Focus on LEARNING, not just correctness
+STRICT RULES:
+1. NEVER start with: "Your answer is", "The selected option", "This demonstrates", "Review"
+2. START IMMEDIATELY with topic-specific facts, definitions, or formulas
+3. Every sentence must contain SPECIFIC information about the topic
+4. Identify what the question tests and explain THAT topic
+5. Maximum 3-4 lines
 
-For CORRECT answers:
-- Provide positive reinforcement
-- Briefly explain WHY the answer is correct
-- Reinforce the concept or method used
+REQUIRED FORMAT:
 
-For INCORRECT answers:
-- Explain WHY the selected answer is wrong (without being harsh)
-- Explain HOW to approach the question correctly
-- Guide toward understanding the concept
-- Do NOT reveal the correct answer directly in the first sentence
-- Build understanding step by step
+If WRONG answer:
+Line 1: Why selected answer is wrong (with specific facts)
+Line 2: Why correct answer is right (with specific facts)
+Line 3: Explain the topic/concept
 
-Example good feedback (incorrect):
-"Your selected answer focuses on [specific aspect], but this question is asking about [different aspect]. To solve this, consider [concept/method]. The key is understanding [relationship/principle]."
+If CORRECT answer:
+Line 1: Why this answer is correct (with specific facts)
+Line 2: Explain the topic/concept with details
 
-Example good feedback (correct):
-"Excellent! You correctly identified that [concept]. This demonstrates understanding of [principle]. Well done!"
+EXAMPLES:
 
-Example BAD feedback (DO NOT DO THIS):
-- "The correct answer is [answer]"
-- "Option A is wrong because..."
-- "You should have chosen [answer]"
+Wrong (Geography): "New York is a major city but not the capital of the USA. Washington D.C. serves as the capital, established in 1790 as a neutral federal district. It was created to avoid giving any state an advantage by hosting the capital."
+
+Correct (Biology): "DNA replication occurs during the S phase of the cell cycle, before mitosis begins. This ensures each daughter cell receives a complete copy of genetic information. The process involves DNA polymerase enzyme unwinding and copying the double helix."
+
+Wrong (Math): "The area formula for a triangle is ½ × base × height, not base × height. For a triangle with base 6 and height 4, the area is ½ × 6 × 4 = 12 square units. The ½ factor accounts for a triangle being half of a rectangle."
+
+NEVER WRITE:
+❌ "Your answer is correct/incorrect"
+❌ "The selected option correctly/incorrectly..."
+❌ "This demonstrates understanding"
+❌ "Review the key concepts"
+❌ Any sentence without specific topic facts
 """
         
         user_answer_text = user_answer if user_answer else "No answer provided"
@@ -676,28 +678,34 @@ Example BAD feedback (DO NOT DO THIS):
 Options:
 {chr(10).join([f"- {opt}" for opt in options])}
 
-The student selected: "{user_answer_text}"
-This answer is CORRECT.
+Student selected: "{user_answer_text}"
+STATUS: CORRECT
 
-Provide brief, encouraging feedback (2-4 lines) that:
-- Reinforces why this answer is correct
-- Explains the concept or method used
-- Encourages continued learning"""
+Generate 2-3 lines explanation:
+- Line 1: State the SPECIFIC FACT/CONCEPT that makes this correct (no "your answer is...")
+- Line 2: Explain the related topic with specific details
+- START directly with factual content
+
+Format: "[Fact about why correct]. [Topic explanation]. [Additional detail]."
+"""
         else:
             user_prompt = f"""Question: {question_text}
 
 Options:
 {chr(10).join([f"- {opt}" for opt in options])}
 
-The student selected: "{user_answer_text}"
-The correct answer is: "{correct_answer_text}"
-This answer is INCORRECT.
+Student selected: "{user_answer_text}"
+Correct answer: "{correct_answer_text}"
+STATUS: INCORRECT
 
-Provide helpful, educational feedback (2-4 lines) that:
-- Explains WHY the selected answer is wrong (without being harsh)
-- Explains HOW to approach the question correctly
-- Guides toward understanding the concept
-- Does NOT start with "The correct answer is..." - build understanding naturally"""
+Generate 3-4 lines explanation:
+- Line 1: Why selected answer is WRONG (specific facts, not "your answer is...")
+- Line 2: Why correct answer is RIGHT (specific facts)
+- Line 3: Explain the topic/concept
+- START directly with factual content
+
+Format: "[Why selected is wrong]. [Why correct is right]. [Topic explanation]."
+"""
         
         try:
             result = self._make_request(
@@ -719,11 +727,8 @@ Provide helpful, educational feedback (2-4 lines) that:
             return self._get_fallback_feedback(is_correct)
     
     def _get_fallback_feedback(self, is_correct: bool) -> str:
-        """Return a generic fallback feedback if LLM fails"""
-        if is_correct:
-            return "Great job! Your answer demonstrates a solid understanding of the concept. Keep up the excellent work!"
-        else:
-            return "This question requires careful consideration of the key concepts. Review the related topic and think about how the principles apply to this specific scenario."
+        """Fallback if LLM fails - minimal generic message"""
+        return "Unable to generate explanation. Please review the question and related topic concepts."
 
 
 

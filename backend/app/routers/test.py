@@ -112,10 +112,7 @@ def _generate_feedback_for_details(
             except Exception as e:
                 print(f"[ERROR] Error generating feedback for question {detail.question_id}: {e}")
                 # Use fallback feedback
-                if detail.is_correct:
-                    feedback_text = "Great job! Your answer demonstrates a solid understanding of the concept."
-                else:
-                    feedback_text = "Review the key concepts related to this question to improve your understanding."
+                feedback_text = "Unable to generate explanation. Please review the question and related topic concepts."
             
             updated_details.append(TestResultDetail(
                 question_id=detail.question_id,

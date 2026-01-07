@@ -12,7 +12,6 @@ const Results = () => {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [expandedFeedback, setExpandedFeedback] = useState({}); // Track which feedback sections are expanded
 
   useEffect(() => {
     loadResults();
@@ -189,65 +188,6 @@ const Results = () => {
                 </div>
               </div>
             </div>
-
-            {/* Feedback Section */}
-            {detail.feedback && (
-              <div style={{
-                marginTop: '20px',
-                padding: '15px',
-                backgroundColor: '#F6F8FF',
-                border: '1px solid #E0E5FF',
-                borderRadius: '8px',
-                borderLeft: `4px solid ${detail.is_correct ? '#4CAF50' : '#A78BFA'}`
-              }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    marginBottom: expandedFeedback[detail.question_id] ? '12px' : '0'
-                  }}
-                  onClick={() => setExpandedFeedback(prev => ({
-                    ...prev,
-                    [detail.question_id]: !prev[detail.question_id]
-                  }))}
-                >
-                  <h5 style={{
-                    margin: 0,
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#1F2937',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span>💡</span>
-                    <span>Explanation</span>
-                  </h5>
-                  <span style={{
-                    fontSize: '18px',
-                    color: '#6B7280',
-                    transition: 'transform 0.2s',
-                    transform: expandedFeedback[detail.question_id] ? 'rotate(180deg)' : 'rotate(0deg)'
-                  }}>
-                    ▼
-                  </span>
-                </div>
-                {expandedFeedback[detail.question_id] && (
-                  <p style={{
-                    margin: 0,
-                    fontSize: '14px',
-                    color: '#1F2937',
-                    lineHeight: '1.6',
-                    paddingTop: '8px',
-                    borderTop: '1px solid #E0E5FF'
-                  }}>
-                    {detail.feedback}
-                  </p>
-                )}
-              </div>
-            )}
           </div>
         ))}
       </div>

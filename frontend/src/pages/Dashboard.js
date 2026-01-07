@@ -1069,33 +1069,129 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
-              <div className="quiz-grid">
-                {myQuizzes.length === 0 ? (
-                  <div className="empty-state">
-                    <p>📚 No quizzes yet. Create your first quiz!</p>
-                    <button onClick={() => navigate('/create-quiz')} className="create-quiz-btn">
-                      Create Quiz
-                    </button>
+              {myQuizzes.length === 0 ? (
+                <div className="empty-state">
+                  <p>📚 No quizzes yet. Create your first quiz!</p>
+                  <button onClick={() => navigate('/create-quiz')} className="create-quiz-btn">
+                    Create Quiz
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Table view for desktop */}
+                  <div className="quiz-table-container">
+                    <table className="quiz-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40px' }}></th>
+                          <th>Quiz Name</th>
+                          <th>Difficulty</th>
+                          <th>Questions</th>
+                          <th>Created</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {myQuizzes.map(quiz => (
+                          <tr key={quiz.quiz_id} className="quiz-table-row">
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={selectedQuizzes.has(quiz.quiz_id)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectItem('myQuizzes', quiz.quiz_id);
+                                }}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td className="quiz-name-cell">
+                              <strong>{quiz.quiz_name}</strong>
+                            </td>
+                            <td>
+                              <span className={`difficulty-badge ${quiz.difficulty_level.toLowerCase()}`}>
+                                {quiz.difficulty_level}
+                              </span>
+                            </td>
+                            <td>📝 {quiz.total_no_questions}</td>
+                            <td>{formatDate(quiz.created_date)}</td>
+                            <td>
+                              <div className="action-buttons">
+                                <button 
+                                  onClick={() => handleViewQuiz(quiz.quiz_id)} 
+                                  className="action-btn view-btn-icon"
+                                  title="View Quiz"
+                                >
+                                  👁️
+                                </button>
+                                {user?.role === 'TEACHER' && (
+                                  <>
+                                    <button 
+                                      onClick={() => handleViewQuestionDifficulty(quiz.quiz_id)} 
+                                      className="action-btn difficulty-btn-icon"
+                                      title="View Difficulty"
+                                    >
+                                      📊
+                                    </button>
+                                    <button 
+                                      onClick={() => handleExportCSV(quiz.quiz_id)} 
+                                      className="action-btn export-btn-icon"
+                                      title="Export CSV"
+                                    >
+                                      📥
+                                    </button>
+                                    <button 
+                                      onClick={() => handleShareQuiz(quiz.quiz_id)} 
+                                      className="action-btn share-btn-icon"
+                                      title="Assign / Share"
+                                    >
+                                      🔗
+                                    </button>
+                                  </>
+                                )}
+                                <button 
+                                  onClick={() => handleTakeTest(quiz.quiz_id)} 
+                                  className="action-btn take-test-btn-icon"
+                                  title="Take Test"
+                                >
+                                  ▶️
+                                </button>
+                                <button 
+                                  onClick={(e) => handleDeleteQuiz(quiz.quiz_id, e)} 
+                                  className="action-btn delete-btn-icon"
+                                  title="Delete"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ) : (
-                  myQuizzes.map(quiz => (
-                    <QuizCard
-                      key={quiz.quiz_id}
-                      quiz={quiz}
-                      onTakeTest={() => handleTakeTest(quiz.quiz_id)}
-                      onViewQuiz={handleViewQuiz}
-                      onDelete={handleDeleteQuiz}
-                      onShare={handleShareQuiz}
-                      onViewDifficulty={handleViewQuestionDifficulty}
-                      onExportCSV={handleExportCSV}
-                      isSelected={selectedQuizzes.has(quiz.quiz_id)}
-                      onSelect={handleSelectItem}
-                      section="myQuizzes"
-                      showTakeButton={true}
-                    />
-                  ))
-                )}
-              </div>
+                  
+                  {/* Card view for mobile */}
+                  <div className="quiz-grid">
+                    {myQuizzes.map(quiz => (
+                      <QuizCard
+                        key={quiz.quiz_id}
+                        quiz={quiz}
+                        onTakeTest={() => handleTakeTest(quiz.quiz_id)}
+                        onViewQuiz={handleViewQuiz}
+                        onDelete={handleDeleteQuiz}
+                        onShare={handleShareQuiz}
+                        onViewDifficulty={handleViewQuestionDifficulty}
+                        onExportCSV={handleExportCSV}
+                        isSelected={selectedQuizzes.has(quiz.quiz_id)}
+                        onSelect={handleSelectItem}
+                        section="myQuizzes"
+                        showTakeButton={true}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
