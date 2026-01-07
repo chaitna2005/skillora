@@ -417,11 +417,38 @@ const Dashboard = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A';
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const getFeedbackLabel = (score, total) => {
+    // Check for null/undefined/0 for total, but allow 0 for score
+    if (score === null || score === undefined || total === null || total === undefined || total === 0) {
+      return 'N/A';
+    }
+    const percentage = (score / total) * 100;
+    if (percentage >= 80) return 'Excellent';
+    if (percentage >= 60) return 'Good';
+    if (percentage >= 40) return 'Average';
+    return 'Needs Improvement';
+  };
+
+  const getFeedbackClass = (score, total) => {
+    // Check for null/undefined/0 for total, but allow 0 for score
+    if (score === null || score === undefined || total === null || total === undefined || total === 0) {
+      return '';
+    }
+    const percentage = (score / total) * 100;
+    if (percentage >= 80) return 'excellent';
+    if (percentage >= 60) return 'good';
+    if (percentage >= 40) return 'average';
+    return 'needs-improvement';
   };
 
   const handleShareQuiz = async (quizId) => {
@@ -430,9 +457,13 @@ const Dashboard = () => {
       const result = await createShareLink(quizId, userId);
       setShareLink(result.share_url);
       navigator.clipboard.writeText(result.share_url);
-      alert('Share link copied to clipboard!');
+      
+      // Show non-blocking success message
+      setSuccessMessage('✓ Share link copied to clipboard!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
-      alert('Failed to create share link. Please try again.');
+      setSuccessMessage('✗ Failed to create share link. Please try again.');
+      setTimeout(() => setSuccessMessage(''), 3000);
       console.error(error);
     }
   };
@@ -984,7 +1015,8 @@ const Dashboard = () => {
                 <button 
                   onClick={() => {
                     navigator.clipboard.writeText(shareLink);
-                    alert('Link copied to clipboard!');
+                    setSuccessMessage('✓ Link copied to clipboard!');
+                    setTimeout(() => setSuccessMessage(''), 3000);
                   }}
                   style={{
                     padding: '8px 16px',
@@ -1347,26 +1379,89 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
-              <div className="test-grid">
-                {pendingTests.length === 0 ? (
-                  <div className="empty-state">
-                    <p>⏳ No pending tests.</p>
+              {pendingTests.length === 0 ? (
+                <div className="empty-state">
+                  <p>⏳ No pending tests.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Table view for desktop */}
+                  <div className="quiz-table-container">
+                    <table className="quiz-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40px' }}></th>
+                          <th>Quiz Name</th>
+                          <th>Difficulty</th>
+                          <th>Questions</th>
+                          <th>Status</th>
+                          <th>Date</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingTests.map(test => (
+                          <tr key={test.uqt_id} className="quiz-table-row">
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={selectedPending.has(test.uqt_id)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectItem('pending', test.uqt_id);
+                                }}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td className="quiz-name-cell">
+                              <strong>{test.quiz_name}</strong>
+                            </td>
+                            <td>
+                              <span className={`difficulty-badge ${test.difficulty_level?.toLowerCase() || 'medium'}`}>
+                                {test.difficulty_level || 'Medium'}
+                              </span>
+                            </td>
+                            <td>📝 {test.total_questions || test.total_no_questions || 0}</td>
+                            <td>
+                              <span className="status-badge pending">
+                                ⏳ Pending
+                              </span>
+                            </td>
+                            <td>{formatDate(test.start_time)}</td>
+                            <td>
+                              <div className="action-buttons">
+                                <button 
+                                  onClick={() => handleTakeTest(test.quiz_id, test.quiz_assignment_id ?? null)} 
+                                  className="action-btn take-test-btn-icon"
+                                  title="Continue / Start Test"
+                                >
+                                  ▶️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                ) : (
-                  pendingTests.map(test => (
-                    <TestCard
-                      key={test.uqt_id}
-                      test={test}
-                      isPending={true}
-                      onViewResult={() => handleTakeTest(test.quiz_id, test.quiz_assignment_id ?? null)}
-                      onDelete={handleDeletePendingTest}
-                      isSelected={selectedPending.has(test.uqt_id)}
-                      onSelect={handleSelectItem}
-                      section="pending"
-                    />
-                  ))
-                )}
-              </div>
+                  
+                  {/* Card view for mobile */}
+                  <div className="test-grid">
+                    {pendingTests.map(test => (
+                      <TestCard
+                        key={test.uqt_id}
+                        test={test}
+                        isPending={true}
+                        onViewResult={() => handleTakeTest(test.quiz_id, test.quiz_assignment_id ?? null)}
+                        onDelete={handleDeletePendingTest}
+                        isSelected={selectedPending.has(test.uqt_id)}
+                        onSelect={handleSelectItem}
+                        section="pending"
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -1421,25 +1516,103 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
-              <div className="test-grid">
-                {completedTests.length === 0 ? (
-                  <div className="empty-state">
-                    <p>✅ No completed tests yet.</p>
+              {completedTests.length === 0 ? (
+                <div className="empty-state">
+                  <p>✅ No completed tests yet.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Table view for desktop */}
+                  <div className="quiz-table-container">
+                    <table className="quiz-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40px' }}></th>
+                          <th>Quiz Name</th>
+                          <th>Difficulty</th>
+                          <th>Questions</th>
+                          <th>Score</th>
+                          <th>Feedback</th>
+                          <th>Date</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {completedTests.map(test => {
+                          const totalQuestions = test.total_questions || test.total_no_questions || 0;
+                          // For completed tests, default to 0 if score is missing (should not happen)
+                          // This ensures we NEVER show N/A for completed tests
+                          const score = test.total_correct !== null && test.total_correct !== undefined 
+                            ? test.total_correct 
+                            : 0;
+                          const feedbackLabel = getFeedbackLabel(score, totalQuestions);
+                          const feedbackClass = getFeedbackClass(score, totalQuestions);
+                          
+                          return (
+                            <tr key={test.uqt_id} className="quiz-table-row">
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedCompleted.has(test.uqt_id)}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectItem('completed', test.uqt_id);
+                                  }}
+                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                />
+                              </td>
+                              <td className="quiz-name-cell">
+                                <strong>{test.quiz_name}</strong>
+                              </td>
+                              <td>
+                                <span className={`difficulty-badge ${test.difficulty_level?.toLowerCase() || 'medium'}`}>
+                                  {test.difficulty_level || 'Medium'}
+                                </span>
+                              </td>
+                              <td>📝 {totalQuestions}</td>
+                              <td>
+                                <strong>{score}/{totalQuestions}</strong>
+                              </td>
+                              <td>
+                                <span className={`feedback-badge ${feedbackClass}`}>
+                                  {feedbackLabel}
+                                </span>
+                              </td>
+                              <td>{formatDate(test.completed_time)}</td>
+                              <td>
+                                <div className="action-buttons">
+                                  <button 
+                                    onClick={() => handleViewResult(test)} 
+                                    className="action-btn view-btn-icon"
+                                    title="View Results"
+                                  >
+                                    📊
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                ) : (
-                  completedTests.map(test => (
-                    <TestCard
-                      key={test.uqt_id}
-                      test={test}
-                      isPending={false}
-                      onViewResult={() => handleViewResult(test)}
-                      isSelected={selectedCompleted.has(test.uqt_id)}
-                      onSelect={handleSelectItem}
-                      section="completed"
-                    />
-                  ))
-                )}
-              </div>
+                  
+                  {/* Card view for mobile */}
+                  <div className="test-grid">
+                    {completedTests.map(test => (
+                      <TestCard
+                        key={test.uqt_id}
+                        test={test}
+                        isPending={false}
+                        onViewResult={() => handleViewResult(test)}
+                        isSelected={selectedCompleted.has(test.uqt_id)}
+                        onSelect={handleSelectItem}
+                        section="completed"
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

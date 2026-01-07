@@ -63,11 +63,10 @@ const CreateQuiz = () => {
 
     try {
       const quiz = await createQuiz(user.user_id, formData);
-      alert('Quiz created successfully! 🎉');
+      // Smoothly redirect to dashboard after successful creation
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create quiz. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
