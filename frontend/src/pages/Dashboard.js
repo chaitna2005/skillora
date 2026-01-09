@@ -17,8 +17,7 @@ import {
   bulkDeleteQuizzes,
   bulkDeleteAssignedQuizzes,
   createShareLink,
-  exportQuizResultsCSV,
-  getUserStats
+  exportQuizResultsCSV
 } from '../services/api';
 import '../styles/Dashboard.css';
 
@@ -42,8 +41,6 @@ const Dashboard = () => {
   const [selectedPending, setSelectedPending] = useState(new Set());
   const [selectedCompleted, setSelectedCompleted] = useState(new Set());
   const [shareLink, setShareLink] = useState(null);
-  const [userStats, setUserStats] = useState(null);
-  const [newBadgeNotification, setNewBadgeNotification] = useState(null);
   
   // Helper to get user ID (handles different field names)
   const getUserId = () => {
@@ -107,12 +104,11 @@ const Dashboard = () => {
     try {
       setLoading(true);
       
-      const [quizzes, assigned, pending, completed, stats] = await Promise.all([
+      const [quizzes, assigned, pending, completed] = await Promise.all([
         getUserQuizzes(userId).catch(() => []),
         getAssignedQuizzes(userId).catch(() => []),
         getPendingTests(userId).catch(() => []),
-        getCompletedTests(userId).catch(() => []),
-        getUserStats(userId).catch(() => null)
+        getCompletedTests(userId).catch(() => [])
       ]);
       
       // Ensure we have arrays (handle null/undefined responses)
@@ -134,21 +130,6 @@ const Dashboard = () => {
       setAssignedQuizzes(assignedArray);
       setPendingTests(pendingArray);
       setCompletedTests(completedArray);
-      
-      // Update stats and check for new badges
-      if (stats) {
-        const previousBadges = userStats?.unlocked_badges || [];
-        const newBadges = stats.unlocked_badges || [];
-        const newlyUnlocked = newBadges.filter(badge => !previousBadges.includes(badge));
-        
-        // Show notification for newly unlocked badges (only if we had previous stats)
-        if (newlyUnlocked.length > 0 && userStats !== null) {
-          setNewBadgeNotification(newlyUnlocked);
-          setTimeout(() => setNewBadgeNotification(null), 5000); // Auto-hide after 5 seconds
-        }
-        
-        setUserStats(stats);
-      }
     } catch (error) {
       setMyQuizzes([]);
       setAssignedQuizzes([]);
@@ -767,103 +748,8 @@ const Dashboard = () => {
   };
 
   // Badge name mapping
-  const badgeNames = {
-    'first_quiz': 'First Quiz Completed',
-    'five_quizzes': '5 Quizzes Completed',
-    'ten_quizzes': '10 Quizzes Completed'
-  };
-
   return (
     <div className="dashboard-container">
-      {/* Badge Notification Toast */}
-      {newBadgeNotification && newBadgeNotification.length > 0 && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          zIndex: 9999,
-          backgroundColor: '#4CAF50',
-          color: 'white',
-          padding: '16px 24px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          animation: 'slideIn 0.3s ease-out'
-        }}>
-          <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
-            🎉 New Badge Unlocked!
-          </div>
-          {newBadgeNotification.map((badgeId, idx) => (
-            <div key={idx} style={{ fontSize: '14px', marginTop: '4px' }}>
-              {badgeNames[badgeId] || badgeId}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Stats Display */}
-      {userStats && (
-        <div style={{
-          marginBottom: '20px',
-          padding: '16px',
-          backgroundColor: '#F6F8FF',
-          border: '1px solid #E0E5FF',
-          borderRadius: '8px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {userStats.current_streak > 0 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#1F2937'
-              }}>
-                <span>🔥</span>
-                <span>{userStats.current_streak}-day streak</span>
-              </div>
-            )}
-            {userStats.current_streak === 0 && (
-              <div style={{ fontSize: '14px', color: '#6B7280' }}>
-                Start your streak today!
-              </div>
-            )}
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '14px', color: '#6B7280' }}>
-              <span style={{ fontWeight: '600', color: '#1F2937' }}>{userStats.quiz_completion_count}</span> quizzes completed
-            </div>
-            
-            {userStats.unlocked_badges && userStats.unlocked_badges.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '14px', color: '#6B7280' }}>Badges:</span>
-                {userStats.unlocked_badges.map((badgeId, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      backgroundColor: '#6C63FF',
-                      color: 'white',
-                      padding: '4px 12px',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      fontWeight: '500'
-                    }}
-                    title={badgeNames[badgeId] || badgeId}
-                  >
-                    {badgeNames[badgeId] || badgeId}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
       {successMessage && (
         <div className="success-message" style={{
           position: 'fixed',

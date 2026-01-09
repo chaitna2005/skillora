@@ -28,6 +28,8 @@
   font-size: 1.3rem;
   font-weight: 700;
   transition: opacity 0.2s;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .sidebar-logo:hover {
@@ -36,10 +38,14 @@
 
 .logo-icon {
   font-size: 2rem;
+  flex-shrink: 0;
 }
 
 .logo-text {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .sidebar-nav {
@@ -213,37 +219,90 @@
   z-index: 999;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* ============================================
+   RESPONSIVE SIDEBAR - MOBILE-FIRST
+   ============================================ */
+
+/* CRITICAL: Tablets and Mobile (≤ 1024px) use DRAWER behavior */
+@media (max-width: 1024px) {
+  /* Hide sidebar by default (drawer mode) */
   .sidebar {
     transform: translateX(-100%);
+    position: fixed;
+    z-index: 1000;
   }
 
+  /* Show sidebar when open */
   .sidebar.open {
     transform: translateX(0);
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2);
   }
 
+  /* Show hamburger menu button */
   .mobile-menu-toggle {
     display: block;
   }
 
+  /* Sidebar overlay (controlled by React component) */
   .sidebar-overlay {
     display: block;
+    transition: opacity 0.3s ease;
   }
 
-  .logo-text {
-    display: none;
-  }
-
+  /* Sidebar width for tablets */
   .sidebar {
     width: 260px;
   }
+
+  /* Ensure main content is full-width when sidebar is hidden */
+  body {
+    overflow-x: hidden;
+  }
 }
 
+/* Tablet-specific adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Keep menu toggle visible but adjust position */
+  .mobile-menu-toggle {
+    top: 20px;
+    left: 20px;
+  }
+
+  /* Larger sidebar for tablets */
+  .sidebar {
+    width: 280px;
+  }
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 768px) {
+  /* Hide logo text on smaller screens */
+  .logo-text {
+    display: none;
+  }
+}
+
+/* Mobile-small: Full-width drawer */
 @media (max-width: 480px) {
   .sidebar {
     width: 100%;
     max-width: 300px;
+  }
+}
+
+/* Desktop: Fixed sidebar always visible */
+@media (min-width: 1025px) {
+  .sidebar {
+    transform: translateX(0);
+    position: fixed;
+  }
+
+  .mobile-menu-toggle {
+    display: none;
+  }
+
+  .sidebar-overlay {
+    display: none;
   }
 }
 
