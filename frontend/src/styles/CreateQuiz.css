@@ -79,6 +79,34 @@
   font-style: italic;
 }
 
+.example-prompt-box {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  border-left: 4px solid #F59E0B;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.1);
+}
+
+.example-prompt-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #92400E;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.example-prompt-text {
+  font-size: 0.875rem;
+  color: #78350F;
+  line-height: 1.6;
+  margin: 0;
+  font-style: italic;
+  padding-left: 1.5rem;
+}
+
 .examples {
   margin-top: 1.5rem;
   padding: 1.25rem;
@@ -214,6 +242,15 @@
 
   .form-actions {
     flex-direction: column;
+  }
+
+  .example-prompt-box {
+    padding: 0.875rem;
+  }
+
+  .example-prompt-text {
+    font-size: 0.8125rem;
+    padding-left: 1rem;
   }
 
   .cancel-btn,

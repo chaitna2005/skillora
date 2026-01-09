@@ -150,11 +150,16 @@ const CreateQuiz = () => {
               name="prompt"
               value={formData.prompt}
               onChange={handleChange}
-              placeholder="Tell us what you'd like to learn or test. Be specific for the best results! For example: 'Create a quiz about JavaScript async/await concepts with practical coding scenarios'"
+              placeholder="Tell us what you'd like to learn or test. Be specific for the best results!"
               rows="5"
               required
             />
-            <p className="helper-text">💡 Tip: More detailed prompts help our AI generate higher-quality, more relevant questions for you.</p>
+            <div className="example-prompt-box">
+              <p className="example-prompt-label">📝 Example Prompt:</p>
+              <p className="example-prompt-text">
+                "Create a quiz on python and java basics. Ask questions from important topics and keep them easy to understand."
+              </p>
+            </div>
             {prompts.length > 0 && (
               <div className="examples">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
