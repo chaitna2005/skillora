@@ -140,7 +140,7 @@ class QuizModel:
     
     @staticmethod
     def claim_assignment(cursor: RealDictCursor, share_token: str, user_id: int) -> Optional[Dict]:
-        """Claim an assignment by updating user_id"""
+        """Claim an assignment by creating a new student assignment record (supports multiple students)"""
         import base64
         import json
         try:
@@ -150,16 +150,46 @@ class QuizModel:
             if not assignment_id:
                 return None
             
-            query = """
-                UPDATE "Quiz_Assignment"
-                SET user_id = %(user_id)s
-                WHERE quiz_assignment_id = %(assignment_id)s AND user_id = assigned_by
+            # Get the original assignment (teacher's template)
+            get_query = """
+                SELECT quiz_id, assigned_by, assign_date, due_date
+                FROM "Quiz_Assignment"
+                WHERE quiz_assignment_id = %s
+            """
+            cursor.execute(get_query, (assignment_id,))
+            original = cursor.fetchone()
+            if not original:
+                return None
+            
+            # Check if student already claimed this assignment (prevent duplicates)
+            check_query = """
+                SELECT quiz_assignment_id, user_id, assigned_by, quiz_id, assign_date, due_date
+                FROM "Quiz_Assignment"
+                WHERE quiz_id = %s AND user_id = %s AND assigned_by = %s
+            """
+            cursor.execute(check_query, (original["quiz_id"], user_id, original["assigned_by"]))
+            existing = cursor.fetchone()
+            if existing:
+                # Already claimed, return existing record
+                return dict(existing)
+            
+            # Create new assignment record for this student
+            insert_query = """
+                INSERT INTO "Quiz_Assignment" (user_id, assigned_by, quiz_id, assign_date, due_date)
+                VALUES (%s, %s, %s, %s, %s)
                 RETURNING quiz_assignment_id, user_id, assigned_by, quiz_id, assign_date, due_date
             """
-            cursor.execute(query, {"user_id": user_id, "assignment_id": assignment_id})
+            cursor.execute(insert_query, (
+                user_id,
+                original["assigned_by"],
+                original["quiz_id"],
+                original["assign_date"],
+                original["due_date"]
+            ))
             result = cursor.fetchone()
             return dict(result) if result else None
-        except Exception:
+        except Exception as e:
+            print(f"[ERROR] claim_assignment failed: {e}")
             return None
     
     @staticmethod
@@ -186,7 +216,7 @@ class QuizModel:
             JOIN "Quiz" q ON qa.quiz_id = q.quiz_id
             JOIN "User" u ON qa.user_id = u.user_id
             LEFT JOIN "User_Quiz_Take" uqt ON qa.quiz_assignment_id = uqt.quiz_assignment_id
-            WHERE qa.assigned_by = %s AND qa.user_id IS NOT NULL
+            WHERE qa.assigned_by = %s AND qa.user_id IS NOT NULL AND qa.user_id != qa.assigned_by
             ORDER BY qa.quiz_id, u.user_id
         """
         cursor.execute(query, (teacher_id,))
@@ -217,7 +247,7 @@ class QuizModel:
             FROM "Quiz" q
             INNER JOIN "Quiz_Assignment" qa ON q.quiz_id = qa.quiz_id
             LEFT JOIN "User_Quiz_Take" uqt ON qa.quiz_assignment_id = uqt.quiz_assignment_id
-            WHERE qa.assigned_by = %s AND qa.user_id IS NOT NULL
+            WHERE qa.assigned_by = %s AND qa.user_id IS NOT NULL AND qa.user_id != qa.assigned_by
             GROUP BY q.quiz_id, q.quiz_name, q.total_no_questions
             ORDER BY q.quiz_id
         """

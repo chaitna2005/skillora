@@ -337,10 +337,16 @@
 }
 
 .quiz-grid,
-.test-grid {
+.test-grid,
+.assigned-quizzes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
+}
+
+/* CRITICAL: Assigned quizzes always use grid layout (no table on desktop) */
+.assigned-quizzes-grid {
+  display: grid !important;
 }
 
 .quiz-card {
@@ -651,7 +657,7 @@
     display: none;
   }
 
-  .quiz-grid, .test-grid {
+  .quiz-grid, .test-grid, .assigned-quizzes-grid {
     display: grid;
   }
 }
@@ -659,6 +665,11 @@
 @media (min-width: 1025px) {
   .quiz-grid, .test-grid {
     display: none;
+  }
+
+  /* CRITICAL: Keep assigned quizzes grid visible on desktop */
+  .assigned-quizzes-grid {
+    display: grid !important;
   }
 
   .quiz-table-container {
@@ -680,7 +691,8 @@
   }
 
   .quiz-grid,
-  .test-grid {
+  .test-grid,
+  .assigned-quizzes-grid {
     grid-template-columns: 1fr;
   }
 
