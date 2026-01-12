@@ -189,11 +189,26 @@ def bulk_delete_assigned_quizzes(
 
 @router.get("/assigned/{user_id}")
 def get_assigned_quizzes(user_id: int, cursor: RealDictCursor = Depends(get_db)):
-    """Get all quizzes assigned to a student"""
+    """Get all quizzes assigned to a student (STUDENTS ONLY - Teachers get empty list)"""
     
     print(f"[API] get_assigned_quizzes called with user_id: {user_id}")
+    
+    # ROLE CHECK: Teachers should NOT see assigned quizzes (those are for Students only)
+    user = UserModel.get_user_by_id(cursor, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    if user.get("role") == "TEACHER":
+        # Teachers see empty assigned list - this is expected behavior
+        print(f"[API] User {user_id} is TEACHER. Returning empty assigned list.")
+        return []
+    
+    # Students get their assigned quizzes
     quizzes = QuizModel.get_assigned_quizzes(cursor, user_id)
-    print(f"[API] get_assigned_quizzes returned {len(quizzes)} quizzes")
+    print(f"[API] get_assigned_quizzes returned {len(quizzes)} quizzes for STUDENT")
     if quizzes:
         print(f"[API] First assigned quiz sample: {quizzes[0] if quizzes else 'None'}")
     return quizzes
