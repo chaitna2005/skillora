@@ -160,6 +160,69 @@ const CreateQuiz = () => {
                 "Create a quiz on python and java basics. Ask questions from important topics and keep them easy to understand."
               </p>
             </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="total_no_questions">
+                Number of Questions <span className="required">*</span>
+              </label>
+              <select
+                id="total_no_questions"
+                name="total_no_questions"
+                value={formData.total_no_questions}
+                onChange={handleChange}
+                required
+              >
+                <option value="5">5 Questions</option>
+                <option value="10">10 Questions</option>
+                <option value="15">15 Questions</option>
+                <option value="20">20 Questions</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="difficulty_level">
+                Difficulty Level <span className="required">*</span>
+              </label>
+              <select
+                id="difficulty_level"
+                name="difficulty_level"
+                value={formData.difficulty_level}
+                onChange={handleChange}
+                required
+              >
+                <option value="EASY">Easy</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HARD">Hard</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="cancel-btn"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="submit-btn" disabled={loading}>
+              {loading ? (
+                <>
+                  <span className="spinner-small"></span>
+                  AI is Generating Your Quiz...
+                </>
+              ) : (
+                <>
+                  🚀 Generate Quiz with AI
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="form-group">
             {prompts.length > 0 && (
               <div className="examples">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -230,66 +293,6 @@ const CreateQuiz = () => {
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="total_no_questions">
-                Number of Questions <span className="required">*</span>
-              </label>
-              <select
-                id="total_no_questions"
-                name="total_no_questions"
-                value={formData.total_no_questions}
-                onChange={handleChange}
-                required
-              >
-                <option value="5">5 Questions</option>
-                <option value="10">10 Questions</option>
-                <option value="15">15 Questions</option>
-                <option value="20">20 Questions</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="difficulty_level">
-                Difficulty Level <span className="required">*</span>
-              </label>
-              <select
-                id="difficulty_level"
-                name="difficulty_level"
-                value={formData.difficulty_level}
-                onChange={handleChange}
-                required
-              >
-                <option value="EASY">Easy</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HARD">Hard</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="cancel-btn"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button type="submit" className="submit-btn" disabled={loading}>
-              {loading ? (
-                <>
-                  <span className="spinner-small"></span>
-                  AI is Generating Your Quiz...
-                </>
-              ) : (
-                <>
-                  🚀 Generate Quiz with AI
-                </>
-              )}
-            </button>
           </div>
         </form>
 

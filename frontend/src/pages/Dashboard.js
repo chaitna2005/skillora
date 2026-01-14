@@ -910,22 +910,6 @@ const Dashboard = () => {
                         🗑️ Delete Selected ({selectedQuizzes.size})
                       </button>
                     )}
-                    <button 
-                      onClick={() => handleDeleteAll('myQuizzes')}
-                      className="delete-all-btn"
-                      style={{
-                        background: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        padding: '10px 20px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      🗑️ Delete All
-                    </button>
                   </div>
                 </div>
               )}
@@ -1095,22 +1079,6 @@ const Dashboard = () => {
                         🗑️ Delete Selected ({selectedAssigned.size})
                       </button>
                     )}
-                    <button 
-                      onClick={() => handleDeleteAll('assigned')}
-                      className="delete-all-btn"
-                      style={{
-                        background: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        padding: '10px 20px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      🗑️ Delete All
-                    </button>
                   </div>
                 </div>
               )}
@@ -1181,22 +1149,6 @@ const Dashboard = () => {
                         🗑️ Delete Selected ({selectedPending.size})
                       </button>
                     )}
-                    <button 
-                      onClick={() => handleDeleteAll('pending')}
-                      className="delete-all-btn"
-                      style={{
-                        background: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        padding: '10px 20px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      🗑️ Delete All
-                    </button>
                   </div>
                 </div>
               )}
@@ -1318,22 +1270,6 @@ const Dashboard = () => {
                         🗑️ Delete Selected ({selectedCompleted.size})
                       </button>
                     )}
-                    <button 
-                      onClick={() => handleDeleteAll('completed')}
-                      className="delete-all-btn"
-                      style={{
-                        background: '#f44336',
-                        color: 'white',
-                        border: 'none',
-                        padding: '10px 20px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500'
-                      }}
-                    >
-                      🗑️ Delete All
-                    </button>
                   </div>
                 </div>
               )}
