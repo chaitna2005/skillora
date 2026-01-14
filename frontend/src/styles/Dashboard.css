@@ -114,7 +114,7 @@ html, body {
 
 .subtitle {
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   word-wrap: break-word;
   overflow-wrap: break-word;
   line-height: 1.4;
@@ -693,7 +693,7 @@ html, body {
   }
 
   .subtitle {
-    font-size: 0.9rem;
+    font-size: 1.1rem;
     line-height: 1.4;
   }
 

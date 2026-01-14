@@ -574,10 +574,10 @@ def export_quiz_results_csv(
         
         if total_correct is not None and total_questions > 0:
             percentage = round((total_correct / total_questions) * 100, 1)
-            score = f"{total_correct}/{total_questions}"
+            score = f"'{total_correct}/{total_questions}"
         else:
             percentage = 0.0
-            score = "N/A"
+            score = "'N/A"
         
         if completed_time:
             attempt_date = completed_time.strftime("%Y-%m-%d %H:%M:%S") if isinstance(completed_time, datetime) else str(completed_time)
