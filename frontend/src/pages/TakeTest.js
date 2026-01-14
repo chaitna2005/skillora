@@ -20,6 +20,7 @@ const TakeTest = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
 
   useEffect(() => {
     // Reset state when quizId changes (e.g., when retaking)
@@ -430,17 +431,31 @@ const TakeTest = () => {
       </div>
 
       <div className="question-indicators">
-        {quiz.questions.map((q, index) => (
-          <button
-            key={q.question_id}
-            className={`indicator ${index === currentQuestionIndex ? 'active' : ''} ${
-              answers[q.question_id] && answers[q.question_id].length > 0 ? 'answered' : ''
-            }`}
-            onClick={() => goToQuestion(index)}
+        <div className="palette-header">
+          <span className="palette-title">Questions</span>
+          <button 
+            className="palette-toggle"
+            onClick={() => setIsPaletteOpen(!isPaletteOpen)}
+            aria-label={isPaletteOpen ? "Collapse palette" : "Expand palette"}
           >
-            {index + 1}
+            {isPaletteOpen ? '▲' : '▼'}
           </button>
-        ))}
+        </div>
+        {isPaletteOpen && (
+          <div className="palette-content">
+            {quiz.questions.map((q, index) => (
+              <button
+                key={q.question_id}
+                className={`indicator ${index === currentQuestionIndex ? 'active' : ''} ${
+                  answers[q.question_id] && answers[q.question_id].length > 0 ? 'answered' : ''
+                }`}
+                onClick={() => goToQuestion(index)}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="question-card">

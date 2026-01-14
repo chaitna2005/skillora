@@ -108,17 +108,26 @@ Response format:
 }
 """
         
-        user_prompt = f"""Create {total_questions} quiz questions on the following topic:
+        user_prompt = f"""CRITICAL REQUIREMENT: Generate EXACTLY {total_questions} quiz questions. Count them before responding!
 
 Topic: {prompt}
 Difficulty: {difficulty_level}
-Number of questions: {total_questions}
+REQUIRED NUMBER OF QUESTIONS: {total_questions} (THIS IS MANDATORY - NOT {total_questions-1}, NOT {total_questions+1}, EXACTLY {total_questions})
 
 Mix of question types:
 - 70% RADIO (single correct answer)
 - 30% CHECKLIST (multiple correct answers)
 
-Ensure questions are appropriate for {difficulty_level} difficulty level."""
+Ensure questions are appropriate for {difficulty_level} difficulty level.
+
+IMPORTANT VALIDATION BEFORE RESPONDING:
+✓ Count the questions in your array
+✓ Verify the count equals {total_questions}
+✓ If count is wrong, add or remove questions to match exactly {total_questions}
+✓ Ensure no duplicate questions
+✓ Ensure each question has exactly 4 unique options
+
+Generate EXACTLY {total_questions} questions now."""
 
         try:
             result = self._make_request(
@@ -142,22 +151,56 @@ Ensure questions are appropriate for {difficulty_level} difficulty level."""
                 title = self.generate_quiz_name(prompt)
             
             # Validation
-            for q in questions:
+            print(f"[OPENAI_DIRECT] Starting validation of {len(questions)} questions")
+            print(f"[OPENAI_DIRECT] Requested: {total_questions}, Received: {len(questions)}")
+            
+            for idx, q in enumerate(questions):
                 if "question_text" not in q or "question_type" not in q or "options" not in q:
-                    raise ValueError("Invalid question format from OpenAI")
+                    print(f"[OPENAI_DIRECT] ERROR: Question {idx+1} missing required fields")
+                    raise ValueError(f"Invalid question format from OpenAI - question {idx+1} missing required fields")
                 
                 if q["question_type"] not in ["RADIO", "CHECKLIST"]:
+                    print(f"[OPENAI_DIRECT] WARNING: Question {idx+1} invalid type '{q['question_type']}', defaulting to RADIO")
                     q["question_type"] = "RADIO"  # Default fallback
                 
                 # Ensure at least one correct answer
                 has_correct = any(opt.get("is_correct", False) for opt in q["options"])
                 if not has_correct:
+                    print(f"[OPENAI_DIRECT] WARNING: Question {idx+1} has no correct answer, marking first option as correct")
                     q["options"][0]["is_correct"] = True
             
-            # Return title and questions
+            # CRITICAL: Check if we received enough questions
+            if len(questions) < total_questions:
+                error_msg = f"OpenAI returned only {len(questions)} questions but {total_questions} were requested. Please try again or reduce the question count."
+                print(f"[OPENAI_DIRECT] ERROR: {error_msg}")
+                raise ValueError(error_msg)
+            
+            # Remove duplicates by question text (case-insensitive)
+            seen_questions = set()
+            unique_questions = []
+            for q in questions:
+                q_text_normalized = q.get("question_text", "").strip().lower()
+                if q_text_normalized and q_text_normalized not in seen_questions:
+                    seen_questions.add(q_text_normalized)
+                    unique_questions.append(q)
+                else:
+                    print(f"[OPENAI_DIRECT] Duplicate question removed: '{q.get('question_text', '')[:80]}'")
+            
+            print(f"[OPENAI_DIRECT] After deduplication: {len(unique_questions)} unique questions")
+            
+            # CRITICAL: Ensure we have exactly the requested number after deduplication
+            if len(unique_questions) < total_questions:
+                error_msg = f"After removing duplicates, only {len(unique_questions)} unique questions remain out of {total_questions} requested. Please try again with a different prompt."
+                print(f"[OPENAI_DIRECT] ERROR: {error_msg}")
+                raise ValueError(error_msg)
+            
+            # Return title and EXACTLY the requested number of questions
+            final_questions = unique_questions[:total_questions]
+            print(f"[OPENAI_DIRECT] Returning exactly {len(final_questions)} unique questions")
+            
             return {
                 "title": title,
-                "questions": questions[:total_questions]  # Ensure we return exact number
+                "questions": final_questions
             }
             
         except Exception as e:

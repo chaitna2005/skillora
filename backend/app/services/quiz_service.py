@@ -49,9 +49,18 @@ class QuizService:
         if not quiz_name:
             quiz_name = self.openai_service.generate_quiz_name(prompt)
         
-        # Use AI-generated questions directly - trust the AI
-        # Limit to requested number
+        # CRITICAL: Verify we received exactly the requested number of questions
+        print(f"[QUIZ_SERVICE] Received {len(questions)} questions from OpenAI service")
+        print(f"[QUIZ_SERVICE] Expected {total_no_questions} questions")
+        
+        if len(questions) < total_no_questions:
+            error_msg = f"Expected {total_no_questions} questions but only received {len(questions)}. Please try again."
+            print(f"[QUIZ_SERVICE] ERROR: {error_msg}")
+            raise ValueError(error_msg)
+        
+        # Use exactly the requested number (should already be exact from service)
         questions = questions[:total_no_questions]
+        print(f"[QUIZ_SERVICE] Using exactly {len(questions)} questions for quiz creation")
         
         # Step 2: Create quiz
         quiz_data = {

@@ -20,6 +20,7 @@ def get_openai_client():
 
 class OpenAIService:
     
+    
     def __init__(self):
         # Use the module-level client
         self.client = get_openai_client()
@@ -259,14 +260,39 @@ Generate {total_questions} valid questions following the exact JSON format from 
             
             print(f"[OPENAI_SERVICE] Validation complete: {validated_count}/{len(questions)} questions validated")
             
-            # Return exactly the requested number
+            # CRITICAL: Ensure we have exactly the requested number of questions
+            print(f"[OPENAI_SERVICE] Checking question count...")
+            print(f"[OPENAI_SERVICE] Requested: {total_questions}")
+            print(f"[OPENAI_SERVICE] Received from AI: {len(questions)}")
+            
+            if len(questions) < total_questions:
+                error_msg = f"OpenAI returned {len(questions)} questions but {total_questions} were requested. Please try again or reduce the question count."
+                print(f"[OPENAI_SERVICE] ERROR: {error_msg}")
+                raise ValueError(error_msg)
+            
+            # Return exactly the requested number (slice in case AI returned more)
             final_questions = questions[:total_questions]
-            print(f"[OPENAI_SERVICE] Returning {len(final_questions)} questions")
+            print(f"[OPENAI_SERVICE] Returning exactly {len(final_questions)} questions")
             
-            if len(final_questions) < total_questions:
-                print(f"[OPENAI_SERVICE] WARNING: Returning fewer questions ({len(final_questions)}) than requested ({total_questions})")
+            # Remove duplicates by question text (case-insensitive)
+            seen_questions = set()
+            unique_questions = []
+            for q in final_questions:
+                q_text_normalized = q.get("question_text", "").strip().lower()
+                if q_text_normalized and q_text_normalized not in seen_questions:
+                    seen_questions.add(q_text_normalized)
+                    unique_questions.append(q)
+                else:
+                    print(f"[OPENAI_SERVICE] Duplicate question detected and removed: '{q.get('question_text', '')[:80]}'")
             
-            return final_questions
+            print(f"[OPENAI_SERVICE] After deduplication: {len(unique_questions)} unique questions")
+            
+            if len(unique_questions) < total_questions:
+                error_msg = f"After removing duplicates, only {len(unique_questions)} unique questions remain out of {total_questions} requested. Please try again."
+                print(f"[OPENAI_SERVICE] ERROR: {error_msg}")
+                raise ValueError(error_msg)
+            
+            return unique_questions[:total_questions]
                 
         except json.JSONDecodeError as e:
             print(f"[OPENAI_SERVICE] ERROR: Failed to parse JSON response")

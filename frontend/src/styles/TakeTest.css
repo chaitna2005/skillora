@@ -79,15 +79,58 @@
 }
 
 .question-indicators {
+  margin-bottom: 2rem;
+  padding: 1rem 1.5rem;
+  background: var(--card-background);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.palette-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.palette-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.palette-toggle {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  color: var(--primary-color);
+  transition: transform 0.3s ease;
+}
+
+.palette-toggle:hover {
+  transform: scale(1.1);
+}
+
+.palette-content {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: center;
-  margin-bottom: 2rem;
-  padding: 1.5rem;
-  background: var(--card-background);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  margin-top: 1rem;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .indicator {
@@ -114,9 +157,9 @@
 }
 
 .indicator.answered {
-  background-color: #d1fae5;
-  border-color: #10b981;
-  color: #065f46;
+  background-color: #dbeafe;
+  border-color: #2563eb;
+  color: #1e40af;
 }
 
 .indicator.answered.active {
