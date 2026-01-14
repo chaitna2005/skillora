@@ -47,7 +47,6 @@ function AppContent() {
   return (
     <Router>
       <div className="app">
-        <Sidebar />
         <div className="main-content">
           <Routes>
             {/* Public Routes */}
@@ -103,6 +102,7 @@ function AppContent() {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </div>
+        <Sidebar />
       </div>
     </Router>
   );
