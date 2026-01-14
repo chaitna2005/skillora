@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Sidebar.css';
@@ -8,6 +8,21 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Update body class when sidebar collapse state changes
+  useEffect(() => {
+    if (isSidebarCollapsed) {
+      document.body.classList.add('sidebar-collapsed');
+    } else {
+      document.body.classList.remove('sidebar-collapsed');
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('sidebar-collapsed');
+    };
+  }, [isSidebarCollapsed]);
 
   const handleLogout = () => {
     logout();
@@ -16,6 +31,10 @@ const Sidebar = () => {
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
   if (!isAuthenticated) {
@@ -50,7 +69,16 @@ const Sidebar = () => {
       )}
 
       {/* Sidebar */}
-      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
+      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        {/* Collapse Toggle Button */}
+        <button 
+          className="sidebar-collapse-toggle"
+          onClick={toggleSidebarCollapse}
+          aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {isSidebarCollapsed ? '«' : '»'}
+        </button>
+
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo" onClick={() => setIsMobileMenuOpen(false)}>
             <span className="logo-icon">📚</span>

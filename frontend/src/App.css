@@ -54,12 +54,20 @@ body {
   flex: 1;
   margin-right: 280px;
   padding: 30px;
-  transition: margin-right 0.3s ease;
+  transition: margin-right 0.3s ease, width 0.3s ease;
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   background-attachment: fixed;
   width: calc(100% - 280px);
   overflow-x: hidden;
+}
+
+/* Adjust main content when sidebar is collapsed (desktop only) */
+@media (min-width: 1025px) {
+  body.sidebar-collapsed .main-content {
+    margin-right: 60px;
+    width: calc(100% - 60px);
+  }
 }
 
 .loading-container {
@@ -214,6 +222,11 @@ button:disabled {
     margin-right: 280px;
     padding: 30px;
     width: calc(100% - 280px);
+  }
+  
+  body.sidebar-collapsed .main-content {
+    margin-right: 60px;
+    width: calc(100% - 60px);
   }
 }
 
