@@ -230,15 +230,16 @@ html, body {
 }
 
 .quiz-table-container {
-  overflow-x: auto;
   border-radius: 12px;
   border: 1px solid var(--border-color);
   background: white;
   box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
 
 .quiz-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.95rem;
 }
@@ -256,6 +257,9 @@ html, body {
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quiz-table tbody tr {
@@ -275,11 +279,18 @@ html, body {
   padding: 1rem;
   vertical-align: middle;
   color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quiz-name-cell {
   color: var(--text-primary);
   font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0;
 }
 
 .action-buttons {
@@ -287,6 +298,65 @@ html, body {
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
+  min-width: fit-content;
+}
+
+/* Fixed column widths for 5-column tables (My Quizzes) */
+.quiz-table thead tr th:nth-child(2),
+.quiz-table tbody tr td:nth-child(2) {
+  width: 35%;
+  max-width: 0;
+}
+
+.quiz-table thead tr th:nth-child(3),
+.quiz-table tbody tr td:nth-child(3) {
+  width: 15%;
+}
+
+.quiz-table thead tr th:nth-child(4),
+.quiz-table tbody tr td:nth-child(4) {
+  width: 12%;
+}
+
+.quiz-table thead tr th:nth-child(5),
+.quiz-table tbody tr td:nth-child(5) {
+  width: 15%;
+}
+
+.quiz-table thead tr th:nth-child(6),
+.quiz-table tbody tr td:nth-child(6) {
+  width: 23%;
+}
+
+/* For 6-column tables (Pending Tests) - slightly adjusted */
+.quiz-table thead tr th:nth-child(7) {
+  width: auto;
+}
+
+/* For 7-column tables (Completed Tests) - Score and Feedback columns */
+.quiz-table thead tr th:nth-child(7),
+.quiz-table tbody tr td:nth-child(7) {
+  width: 15%;
+}
+
+.quiz-table thead tr th:nth-child(8),
+.quiz-table tbody tr td:nth-child(8) {
+  width: 20%;
+}
+
+/* Actions column - allow wrapping of buttons */
+.quiz-table td:last-child {
+  white-space: normal;
+}
+
+/* Checkbox column - fixed small width */
+.quiz-table th:first-child,
+.quiz-table td:first-child {
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  white-space: nowrap;
+  overflow: visible;
 }
 
 .action-btn {
