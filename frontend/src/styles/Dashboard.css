@@ -18,6 +18,13 @@ html, body {
   overflow-x: hidden;
 }
 
+/* Neutral dashboard background */
+@media (min-width: 1025px) {
+  .dashboard-container {
+    padding: 2.5rem;
+  }
+}
+
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
@@ -128,59 +135,74 @@ html, body {
 }
 
 .stat-card {
-  background: var(--card-background);
-  padding: 1.5rem;
-  border-radius: 16px;
-  box-shadow: var(--shadow-md);
+  background: #ffffff;
+  padding: 1.75rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #e2e8f0;
 }
 
 .stat-card:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-xl);
-  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-color: #cbd5e1;
 }
 
+/* Professional neutral theme with very soft pastel tints (*-50 level) */
 .stat-card:nth-child(1) .stat-icon {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: #f0f9ff;
+  color: #0369a1;
+  font-size: 2rem;
 }
 
 .stat-card:nth-child(2) .stat-icon {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #f0fdf4;
+  color: #16a34a;
+  font-size: 2rem;
 }
 
 .stat-card:nth-child(3) .stat-icon {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: #fef3c7;
+  color: #ca8a04;
+  font-size: 2rem;
 }
 
 .stat-card:nth-child(4) .stat-icon {
-  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 2rem;
 }
 
 .stat-icon {
-  font-size: 2.5rem;
-  background: linear-gradient(135deg, var(--primary-color), #6366f1);
-  width: 70px;
-  height: 70px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .stat-content h3 {
-  font-size: 2rem;
-  color: var(--text-primary);
-  margin-bottom: 0.25rem;
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
 }
 
 .stat-content p {
-  color: var(--text-secondary);
-  font-size: 0.95rem;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.025em;
 }
 
 .tabs-container {
@@ -768,18 +790,26 @@ html, body {
   }
 
   .stat-card {
-    padding: 1rem;
+    padding: 1.25rem;
     gap: 1rem;
   }
 
   .stat-icon {
-    font-size: 2rem;
-    width: 55px;
-    height: 55px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .stat-icon svg {
+    width: 28px;
+    height: 28px;
   }
 
   .stat-content h3 {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
+  }
+
+  .stat-content p {
+    font-size: 0.8rem;
   }
 
   .stat-content p {
@@ -1048,7 +1078,17 @@ html, body {
   }
 
   .stat-card {
-    padding: 1rem;
+    padding: 1.25rem;
+  }
+
+  .stat-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .stat-icon svg {
+    width: 28px;
+    height: 28px;
   }
 
   .tab-content {
