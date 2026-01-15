@@ -416,16 +416,10 @@ html, body {
 }
 
 .quiz-grid,
-.test-grid,
-.assigned-quizzes-grid {
+.test-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
-}
-
-/* CRITICAL: Assigned quizzes always use grid layout (no table on desktop) */
-.assigned-quizzes-grid {
-  display: grid !important;
 }
 
 .quiz-card {
@@ -828,8 +822,7 @@ html, body {
 
   /* CRITICAL: Show ONLY card layouts on mobile */
   .quiz-grid,
-  .test-grid,
-  .assigned-quizzes-grid {
+  .test-grid {
     display: grid !important;
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -973,8 +966,7 @@ html, body {
 
   /* CRITICAL: Show ONLY card layouts on tablet */
   .quiz-grid,
-  .test-grid,
-  .assigned-quizzes-grid {
+  .test-grid {
     display: grid !important;
     grid-template-columns: 1fr;
     gap: 1.25rem;
@@ -1018,8 +1010,7 @@ html, body {
 
   /* CRITICAL: Show ONLY card layouts */
   .quiz-grid,
-  .test-grid,
-  .assigned-quizzes-grid {
+  .test-grid {
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1.5rem;
@@ -1034,13 +1025,7 @@ html, body {
     display: none !important;
   }
 
-  /* CRITICAL: Assigned quizzes ALWAYS use grid (no table version) */
-  .assigned-quizzes-grid {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  }
-
-  /* Show tables for My Quizzes, Pending, and Completed */
+  /* Show tables for My Quizzes, Assigned to Me, Pending, and Completed */
   .quiz-table-container {
     display: block !important;
   }

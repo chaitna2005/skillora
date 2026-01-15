@@ -1082,25 +1082,84 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
-              <div className="assigned-quizzes-grid">
-                {(() => {
-                  console.log('[DASHBOARD] Rendering Assigned Quizzes:', {
-                    count: assignedQuizzes.length,
-                    isEmpty: assignedQuizzes.length === 0,
-                    quizzes: assignedQuizzes
-                  });
-                  
-                  if (assignedQuizzes.length === 0) {
-                    return (
-                      <div className="empty-state">
-                        <p>📋 No quizzes assigned to you yet.</p>
-                      </div>
-                    );
-                  }
-                  
-                  return assignedQuizzes.map((quiz, index) => {
-                    console.log(`[DASHBOARD] Rendering assigned quiz ${index}:`, quiz);
-                    return (
+              {assignedQuizzes.length === 0 ? (
+                <div className="empty-state">
+                  <p>📋 No quizzes assigned to you yet.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Table view for desktop */}
+                  <div className="quiz-table-container">
+                    <table className="quiz-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40px' }}></th>
+                          <th>Quiz Name</th>
+                          <th>Difficulty</th>
+                          <th>Questions</th>
+                          <th>Assigned Date</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {assignedQuizzes.map((quiz, index) => {
+                          console.log(`[DASHBOARD] Rendering assigned quiz ${index}:`, quiz);
+                          return (
+                            <tr key={quiz.quiz_assignment_id || `assigned-${quiz.quiz_id}-${index}`} className="quiz-table-row">
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedAssigned.has(quiz.quiz_assignment_id)}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectItem('assigned', quiz.quiz_assignment_id);
+                                  }}
+                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                />
+                              </td>
+                              <td className="quiz-name-cell">
+                                <strong>{quiz.quiz_name || 'Untitled Quiz'}</strong>
+                              </td>
+                              <td>
+                                <span className={`difficulty-badge ${(quiz.difficulty_level || 'medium').toLowerCase()}`}>
+                                  {quiz.difficulty_level || 'Medium'}
+                                </span>
+                              </td>
+                              <td>📝 {quiz.total_no_questions || quiz.total_questions || 0}</td>
+                              <td>{quiz.assign_date ? formatDate(quiz.assign_date) : (quiz.created_date ? formatDate(quiz.created_date) : 'N/A')}</td>
+                              <td>
+                                <div className="action-buttons">
+                                  <button 
+                                    onClick={() => handleViewQuiz(quiz.quiz_id)} 
+                                    className="action-btn view-btn-icon"
+                                    title="View Quiz"
+                                  >
+                                    👁️
+                                  </button>
+                                  <button 
+                                    onClick={() => handleTakeTest(quiz.quiz_id, quiz.quiz_assignment_id)} 
+                                    className="action-btn"
+                                    title="Take Test"
+                                    style={{
+                                      backgroundColor: '#4caf50',
+                                      color: 'white',
+                                      border: 'none'
+                                    }}
+                                  >
+                                    ✏️
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Card view for mobile/tablet */}
+                  <div className="quiz-grid" style={{ display: 'none' }}>
+                    {assignedQuizzes.map((quiz, index) => (
                       <QuizCard
                         key={quiz.quiz_assignment_id || `assigned-${quiz.quiz_id}-${index}`}
                         quiz={quiz}
@@ -1110,10 +1169,10 @@ const Dashboard = () => {
                         onSelect={handleSelectItem}
                         section="assigned"
                       />
-                    );
-                  });
-                })()}
-              </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
