@@ -955,8 +955,8 @@ const Dashboard = () => {
                         <tr>
                           <th style={{ width: '40px' }}></th>
                           <th>Quiz Name</th>
-                          <th>Difficulty</th>
-                          <th>Questions</th>
+                          <th>Diff.</th>
+                          <th>Qs</th>
                           <th>Created</th>
                           <th>Actions</th>
                         </tr>
@@ -1121,9 +1121,9 @@ const Dashboard = () => {
                         <tr>
                           <th style={{ width: '40px' }}></th>
                           <th>Quiz Name</th>
-                          <th>Difficulty</th>
-                          <th>Questions</th>
-                          <th>Assigned Date</th>
+                          <th>Diff.</th>
+                          <th>Qs</th>
+                          <th>Assigned</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -1250,8 +1250,8 @@ const Dashboard = () => {
                         <tr>
                           <th style={{ width: '40px' }}></th>
                           <th>Quiz Name</th>
-                          <th>Difficulty</th>
-                          <th>Questions</th>
+                          <th>Diff.</th>
+                          <th>Qs</th>
                           <th>Status</th>
                           <th>Date</th>
                           <th>Actions</th>
@@ -1371,8 +1371,8 @@ const Dashboard = () => {
                         <tr>
                           <th style={{ width: '40px' }}></th>
                           <th>Quiz Name</th>
-                          <th>Difficulty</th>
-                          <th>Questions</th>
+                          <th>Diff.</th>
+                          <th>Qs</th>
                           <th>Score</th>
                           <th>Feedback</th>
                           <th>Date</th>
