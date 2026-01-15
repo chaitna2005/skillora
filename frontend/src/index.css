@@ -1,4 +1,11 @@
 /* ============================================
+   TAILWIND CSS DIRECTIVES
+   ============================================ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
    GLOBAL MOBILE-FIRST STYLES
    ============================================ */
 
@@ -83,5 +90,16 @@ input, textarea, select {
   button {
     min-height: 44px;
     padding: 0.75rem 1rem;
+  }
+}
+
+/* Utility: Hide scrollbar but keep functionality */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

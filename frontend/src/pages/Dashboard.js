@@ -19,6 +19,16 @@ import {
   createShareLink,
   exportQuizResultsCSV
 } from '../services/api';
+import { 
+  Button, 
+  Card, 
+  Badge, 
+  Table, 
+  TableCellBold, 
+  TableCellActions,
+  ControlledTabs,
+  ConfirmModal
+} from '../components/ui';
 import '../styles/Dashboard.css';
 
 const Dashboard = () => {

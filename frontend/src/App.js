@@ -19,8 +19,8 @@ const ProtectedRoute = ({ children }) => {
   
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="spinner"></div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-12 h-12 border-4 border-gray-200 border-t-primary rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -46,9 +46,9 @@ const PublicRoute = ({ children }) => {
 function AppContent() {
   return (
     <Router>
-      <div className="app">
+      <div className="min-h-screen flex flex-row w-full overflow-x-hidden">
         <Sidebar />
-        <div className="main-content">
+        <div className="flex-1 ml-0 lg:ml-[280px] p-3 sm:p-4 md:p-6 lg:p-[30px] pt-[70px] lg:pt-[30px] min-h-screen bg-gradient-main bg-fixed w-full lg:w-[calc(100%-280px)] overflow-x-hidden transition-all duration-300 ease-in-out [body.sidebar-collapsed_&]:lg:ml-[60px] [body.sidebar-collapsed_&]:lg:w-[calc(100%-60px)]">
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={
