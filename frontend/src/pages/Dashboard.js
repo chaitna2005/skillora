@@ -614,6 +614,12 @@ const Dashboard = () => {
       }
     };
     
+    // For completed tests, calculate feedback using the same logic as desktop table
+    const totalQuestions = test.total_questions || test.total_no_questions || 0;
+    const score = test.total_correct !== null && test.total_correct !== undefined ? test.total_correct : 0;
+    const feedbackLabel = !isPending ? getFeedbackLabel(score, totalQuestions) : null;
+    const feedbackClass = !isPending ? getFeedbackClass(score, totalQuestions) : null;
+    
     return (
     <div className="test-card" style={{ position: 'relative' }}>
       {onSelect && (
@@ -635,10 +641,13 @@ const Dashboard = () => {
       )}
       <div className="test-card-header" style={{ paddingLeft: onSelect ? '40px' : '0' }}>
         <h3>{test.quiz_name}</h3>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {!isPending && (
-            <span className={`score-badge ${test.result >= 70 ? 'pass' : 'fail'}`}>
-              {test.result}%
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span className={`difficulty-badge ${test.difficulty_level?.toLowerCase() || 'medium'}`}>
+            {test.difficulty_level || 'Medium'}
+          </span>
+          {!isPending && feedbackLabel && (
+            <span className={`feedback-badge ${feedbackClass}`}>
+              {feedbackLabel}
             </span>
           )}
           {isPending && onDelete && (
@@ -662,22 +671,22 @@ const Dashboard = () => {
       <div className="test-card-body">
         {isPending ? (
           <>
-            <p className="test-status pending">
-              {test.status === 'NOT_STARTED' && '🟡 Not Started'}
-              {test.status === 'IN_PROGRESS' && '🔵 In Progress'}
-              {test.status === 'COMPLETED' && '🟢 Completed'}
-              {!test.status && '⏳ Pending'}
+            <p className="test-info">
+              <span>📝 {totalQuestions} questions</span>
             </p>
-            {test.due_date && (
-              <p className="due-date">Due: {formatDate(test.due_date)}</p>
-            )}
+            <p className="test-status">
+              <span className="status-badge pending">⏳ Pending</span>
+            </p>
+            <p className="test-date">Started: {formatDate(test.start_time)}</p>
           </>
         ) : (
           <>
-            <p className="test-status completed">
-              {test.status === 'COMPLETED' ? '🟢 Completed' : '✅ Completed'}
+            <p className="test-info">
+              <span>📝 {totalQuestions} questions</span>
             </p>
-            <p className="test-score">Score: {test.total_correct}/{test.total_questions}</p>
+            <p className="test-score">
+              <strong>Score: {score}/{totalQuestions}</strong>
+            </p>
             <p className="test-date">Completed: {formatDate(test.completed_time)}</p>
           </>
         )}
