@@ -20,13 +20,13 @@ const Badge = ({
   ...props 
 }) => {
   // Base styles for all badges
-  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-full transition-all duration-200';
+  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-full transition-all duration-200 uppercase tracking-wide';
 
   // Size styles
   const sizeStyles = {
     sm: 'px-2 py-0.5 text-xs',
-    md: 'px-3 py-1 text-sm',
-    lg: 'px-4 py-1.5 text-base',
+    md: 'px-3 py-1 text-xs',
+    lg: 'px-4 py-1.5 text-sm',
   };
 
   // Variant styles (generic)
@@ -39,21 +39,21 @@ const Badge = ({
     info: 'bg-indigo-100 text-indigo-700',
   };
 
-  // Difficulty-specific styles
+  // Difficulty-specific styles - Professional premium design with dot indicators
   const difficultyStyles = {
-    easy: 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 shadow-sm',
-    medium: 'bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 shadow-sm',
-    hard: 'bg-gradient-to-r from-red-100 to-rose-100 text-red-700 shadow-sm',
+    easy: 'bg-emerald-50 border border-emerald-200 text-slate-700 gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-emerald-500 before:flex-shrink-0',
+    medium: 'bg-amber-50 border border-amber-200 text-slate-700 gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-amber-500 before:flex-shrink-0',
+    hard: 'bg-rose-50 border border-rose-200 text-slate-700 gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-rose-500 before:flex-shrink-0',
   };
 
-  // Status-specific styles (for tests/feedback)
+  // Status-specific styles (for tests/feedback) - Professional premium design with dot indicators
   const statusStyles = {
-    pending: 'bg-gradient-to-r from-yellow-50 to-amber-50 text-amber-700 border border-amber-200',
-    completed: 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200',
-    excellent: 'bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-lg shadow-green-200',
-    good: 'bg-gradient-to-r from-blue-400 to-cyan-500 text-white shadow-lg shadow-blue-200',
-    average: 'bg-gradient-to-r from-purple-400 to-violet-500 text-white shadow-lg shadow-purple-200',
-    'needs-improvement': 'bg-gradient-to-r from-red-400 to-rose-500 text-white shadow-lg shadow-red-200',
+    pending: 'bg-amber-50 border border-amber-200 text-slate-700 gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-amber-500 before:flex-shrink-0',
+    completed: 'bg-emerald-50 border border-emerald-200 text-slate-700 gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-emerald-500 before:flex-shrink-0',
+    excellent: 'bg-emerald-50 border border-emerald-200 text-slate-700 gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-emerald-500 before:flex-shrink-0',
+    good: 'bg-blue-50 border border-blue-200 text-slate-700 gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-blue-500 before:flex-shrink-0',
+    average: 'bg-amber-50 border border-amber-200 text-slate-700 gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-amber-500 before:flex-shrink-0',
+    'needs-improvement': 'bg-rose-50 border border-rose-200 text-slate-700 gap-1.5 before:content-[""] before:w-1.5 before:h-1.5 before:rounded-full before:bg-rose-500 before:flex-shrink-0',
   };
 
   // Determine which style to use
