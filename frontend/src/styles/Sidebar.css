@@ -3,7 +3,7 @@
   left: 0;
   top: 0;
   height: 100vh;
-  width: 280px;
+  width: 288px;
   background: #ffffff;
   border-right: 1px solid #e5e7eb;
   display: flex;
@@ -13,19 +13,19 @@
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
 }
 
-/* Gmail-style collapsed state: icon-only sidebar */
+/* Gmail-style collapsed state: icon-only sidebar (80px) */
 .sidebar.collapsed {
-  width: 72px;
+  width: 80px;
 }
 
 /* Smooth hover expansion on desktop */
 @media (min-width: 1025px) {
   .sidebar.collapsed {
-    width: 72px;
+    width: 80px;
   }
   
   .sidebar:not(.collapsed) {
-    width: 280px;
+    width: 288px;
   }
 }
 

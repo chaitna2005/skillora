@@ -46,9 +46,9 @@ const PublicRoute = ({ children }) => {
 function AppContent() {
   return (
     <Router>
-      <div className="min-h-screen flex flex-row w-full overflow-x-hidden">
+      <div className="min-h-screen w-full overflow-x-hidden">
         <Sidebar />
-        <div className="flex-1 ml-0 lg:ml-[280px] p-3 sm:p-4 md:p-6 lg:p-[30px] pt-[70px] lg:pt-[30px] min-h-screen bg-gradient-main bg-fixed w-full lg:w-[calc(100%-280px)] overflow-x-hidden transition-all duration-300 ease-in-out [body.sidebar-collapsed_&]:lg:ml-[60px] [body.sidebar-collapsed_&]:lg:w-[calc(100%-60px)]">
+        <div className="main-content">
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={
