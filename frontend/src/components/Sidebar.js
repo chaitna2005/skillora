@@ -8,7 +8,12 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Sidebar collapsed by default (Gmail-style: icon-only)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+  
+  // Track if we're on desktop (for hover behavior)
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1025);
 
   // Update body class when sidebar collapse state changes
   useEffect(() => {
@@ -24,6 +29,22 @@ const Sidebar = () => {
     };
   }, [isSidebarCollapsed]);
 
+  // Track screen size for responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      const desktop = window.innerWidth >= 1025;
+      setIsDesktop(desktop);
+      
+      // On mobile/tablet, always keep sidebar collapsed (drawer mode)
+      if (!desktop) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -33,8 +54,22 @@ const Sidebar = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  const toggleSidebarCollapse = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
+  // Gmail-style hover behavior: only on desktop
+  const handleMouseEnter = () => {
+    if (isDesktop) {
+      setIsSidebarCollapsed(false);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (isDesktop) {
+      setIsSidebarCollapsed(true);
+    }
+  };
+
+  // Close mobile menu helper
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
   };
 
   if (!isAuthenticated) {
@@ -68,19 +103,14 @@ const Sidebar = () => {
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}>
-        {/* Collapse Toggle Button */}
-        <button 
-          className="sidebar-collapse-toggle"
-          onClick={toggleSidebarCollapse}
-          aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isSidebarCollapsed ? '«' : '»'}
-        </button>
-
+      {/* Sidebar with Gmail-style hover behavior */}
+      <aside 
+        className={`sidebar ${isMobileMenuOpen ? 'open' : ''} ${isSidebarCollapsed ? 'collapsed' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="sidebar-header">
-          <Link to="/" className="sidebar-logo" onClick={() => setIsMobileMenuOpen(false)}>
+          <Link to="/" className="sidebar-logo" onClick={closeMobileMenu}>
             <span className="logo-icon">📚</span>
             <span className="logo-text">TestMyKnowledge</span>
           </Link>
@@ -90,7 +120,7 @@ const Sidebar = () => {
           <Link 
             to="/" 
             className={`sidebar-link ${isActive('/') ? 'active' : ''}`}
-            onClick={() => setIsMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="link-icon">🏠</span>
             <span className="link-text">Home</span>
@@ -99,7 +129,7 @@ const Sidebar = () => {
           <Link 
             to="/create-quiz" 
             className={`sidebar-link ${isActive('/create-quiz') ? 'active' : ''}`}
-            onClick={() => setIsMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="link-icon">✨</span>
             <span className="link-text">Create Quiz</span>
@@ -108,7 +138,7 @@ const Sidebar = () => {
           <Link 
             to="/my-tests" 
             className={`sidebar-link ${isActive('/my-tests') ? 'active' : ''}`}
-            onClick={() => setIsMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="link-icon">📝</span>
             <span className="link-text">My Tests</span>

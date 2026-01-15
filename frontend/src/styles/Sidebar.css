@@ -9,52 +9,44 @@
   display: flex;
   flex-direction: column;
   z-index: 1000;
-  transition: width 0.3s ease, transform 0.3s ease;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
 }
 
+/* Gmail-style collapsed state: icon-only sidebar */
 .sidebar.collapsed {
-  width: 60px;
+  width: 72px;
 }
 
-.sidebar-collapse-toggle {
-  position: absolute;
-  right: -15px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 30px;
-  height: 60px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0 4px 4px 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  color: #64748b;
-  transition: all 0.2s ease;
-  z-index: 10;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
-}
-
-.sidebar-collapse-toggle:hover {
-  background: #f8fafc;
-  color: #2563eb;
+/* Smooth hover expansion on desktop */
+@media (min-width: 1025px) {
+  .sidebar.collapsed {
+    width: 72px;
+  }
+  
+  .sidebar:not(.collapsed) {
+    width: 280px;
+  }
 }
 
 .sidebar-header {
-  padding: 25px 20px;
+  padding: 20px;
   border-bottom: 1px solid #e5e7eb;
   background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar.collapsed .sidebar-header {
-  padding: 25px 10px;
+  padding: 20px 12px;
 }
 
 .sidebar.collapsed .sidebar-logo {
   justify-content: center;
+  gap: 0;
 }
 
 .sidebar-logo {
@@ -77,6 +69,7 @@
 .logo-icon {
   font-size: 2rem;
   flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .logo-text {
@@ -84,11 +77,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
 }
 
+/* Gmail-style: smoothly hide/show text */
 .sidebar.collapsed .logo-text {
-  display: none;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .sidebar-nav {
@@ -133,33 +131,52 @@
 .link-text {
   font-size: 0.95rem;
   letter-spacing: 0.2px;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  white-space: nowrap;
 }
 
+/* Gmail-style: smoothly hide/show link text */
 .sidebar.collapsed .link-text {
-  display: none;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .sidebar.collapsed .sidebar-link {
   justify-content: center;
-  padding: 12px 10px;
-  margin: 2px 5px;
+  padding: 12px;
+  margin: 2px 8px;
+  gap: 0;
 }
 
 .sidebar-footer {
   padding: 20px;
   border-top: 1px solid #e5e7eb;
   background: #f8fafc;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-user {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Gmail-style: smoothly hide footer when collapsed */
 .sidebar.collapsed .sidebar-footer {
-  display: none;
+  opacity: 0;
+  padding: 0;
+  height: 0;
+  overflow: hidden;
+  border-top: none;
+}
+
+.sidebar.collapsed .sidebar-user {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .user-info {
@@ -213,6 +230,13 @@
 .logout-text {
   flex: 1;
   text-align: left;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed .logout-text {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
 }
 
 /* Mobile Menu Toggle */
@@ -297,25 +321,36 @@
     box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2);
   }
 
-  /* Hide collapse toggle button on mobile/tablet */
-  .sidebar-collapse-toggle {
-    display: none;
+  /* Override collapsed styles on mobile - show everything when sidebar is open */
+  .sidebar.open.collapsed .logo-text,
+  .sidebar.open.collapsed .link-text,
+  .sidebar.open.collapsed .logout-text {
+    opacity: 1;
+    width: auto;
+    pointer-events: auto;
   }
 
-  /* Show all text on mobile even if collapsed class is present */
-  .sidebar.collapsed .logo-text,
-  .sidebar.collapsed .link-text {
-    display: block;
+  .sidebar.open.collapsed .sidebar-footer {
+    opacity: 1;
+    height: auto;
+    padding: 20px;
+    border-top: 1px solid #e5e7eb;
   }
 
-  .sidebar.collapsed .sidebar-footer {
-    display: flex;
+  .sidebar.open.collapsed .sidebar-user {
+    opacity: 1;
+    pointer-events: auto;
   }
 
-  .sidebar.collapsed .sidebar-link {
+  .sidebar.open.collapsed .sidebar-link {
     justify-content: flex-start;
     padding: 12px 20px;
     margin: 2px 12px;
+    gap: 14px;
+  }
+  
+  .sidebar.open.collapsed .sidebar-logo {
+    gap: 12px;
   }
 
   /* Show hamburger menu button */
@@ -370,7 +405,7 @@
   }
 }
 
-/* Desktop: Fixed sidebar always visible */
+/* Desktop: Gmail-style hover behavior */
 @media (min-width: 1025px) {
   .sidebar {
     transform: translateX(0);
@@ -383,6 +418,21 @@
 
   .sidebar-overlay {
     display: none;
+  }
+  
+  /* Collapsed by default on desktop - icon-only */
+  .sidebar.collapsed {
+    width: 72px;
+  }
+  
+  /* Smooth expansion on hover */
+  .sidebar:not(.collapsed) {
+    width: 280px;
+  }
+  
+  /* Add subtle shadow when expanded for depth */
+  .sidebar:not(.collapsed) {
+    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.08);
   }
 }
 

@@ -62,11 +62,11 @@ body {
   overflow-x: hidden;
 }
 
-/* Adjust main content when sidebar is collapsed (desktop only) */
+/* Adjust main content when sidebar is collapsed (desktop only) - Gmail style */
 @media (min-width: 1025px) {
   body.sidebar-collapsed .main-content {
-    margin-left: 60px;
-    width: calc(100% - 60px);
+    margin-left: 72px;
+    width: calc(100% - 72px);
   }
 }
 
@@ -224,9 +224,10 @@ button:disabled {
     width: calc(100% - 280px);
   }
   
+  /* Gmail-style collapsed sidebar: narrow left margin */
   body.sidebar-collapsed .main-content {
-    margin-left: 60px;
-    width: calc(100% - 60px);
+    margin-left: 72px;
+    width: calc(100% - 72px);
   }
 }
 
