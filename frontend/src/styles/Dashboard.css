@@ -253,9 +253,9 @@ html, body {
 
 .quiz-table-container {
   border-radius: 12px;
-  border: 1px solid var(--border-color);
+  border: 1.5px solid #e2e8f0; /* Stronger border - slate-200 */
   background: white;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04); /* Better shadow */
   overflow: hidden;
 }
 
@@ -264,33 +264,35 @@ html, body {
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.95rem;
+  color: #1e293b; /* Darker default text - slate-800 */
 }
 
 .quiz-table thead {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 2px solid var(--border-color);
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); /* Stronger gradient */
+  border-bottom: 2px solid #cbd5e1; /* Clearer border - slate-300 */
 }
 
 .quiz-table th {
-  padding: 1rem;
+  padding: 1.125rem 1rem;
   text-align: left;
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: 0.9rem;
+  font-weight: 700; /* Bolder headers */
+  color: #0f172a; /* Darker text - slate-900 */
+  font-size: 0.875rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.75px; /* More spacing */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .quiz-table tbody tr {
-  border-bottom: 1px solid var(--border-color);
-  transition: all 0.2s ease;
+  border-bottom: 1px solid #e2e8f0; /* Clearer border - slate-200 */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .quiz-table tbody tr:hover {
-  background-color: #f8fafc;
+  background-color: #f1f5f9; /* Stronger hover - slate-100 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); /* Subtle shadow on hover */
 }
 
 .quiz-table tbody tr:last-child {
@@ -298,21 +300,26 @@ html, body {
 }
 
 .quiz-table td {
-  padding: 1rem;
+  padding: 1.125rem 1rem;
   vertical-align: middle;
-  color: var(--text-secondary);
+  color: #475569; /* Darker text - slate-600 */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .quiz-name-cell {
-  color: var(--text-primary);
+  color: #0f172a; /* Darker - slate-900 */
   font-size: 1rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 0;
+}
+
+.quiz-table td strong {
+  font-weight: 700; /* Bolder quiz names */
+  color: #0f172a; /* slate-900 */
 }
 
 .action-buttons {
@@ -380,11 +387,12 @@ html, body {
   padding-right: 1rem;
 }
 
-/* Feedback badge column - prevent truncation */
+/* Feedback badge column - controlled width with wrapping */
 .quiz-table td .feedback-badge {
   display: inline-flex;
-  min-width: fit-content;
-  max-width: 100%;
+  max-width: 140px; /* Match feedback badge max-width */
+  white-space: normal; /* Allow wrapping in table */
+  line-height: 1.3;
 }
 
 /* Checkbox column - fixed small width */
@@ -398,26 +406,28 @@ html, body {
 }
 
 .action-btn {
-  background: none;
-  border: 1px solid var(--border-color);
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1; /* Stronger border - slate-300 */
   border-radius: 6px;
-  padding: 0.375rem; /* Reduced padding for compact size */
+  padding: 0.375rem;
   cursor: pointer;
-  font-size: 1rem; /* Slightly smaller icon size */
-  transition: all 0.2s ease;
+  font-size: 1rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 32px; /* Compact 32px size */
+  min-width: 32px;
   width: 32px;
   height: 32px;
-  flex-shrink: 0; /* Prevent shrinking */
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04); /* Subtle depth */
 }
 
 .action-btn:hover {
-  transform: translateY(-1px); /* Subtle lift for compact buttons */
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  background-color: var(--hover-bg);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+  background-color: #f8fafc; /* slate-50 */
+  border-color: #94a3b8; /* slate-400 */
 }
 
 .view-btn-icon:hover {
@@ -495,111 +505,136 @@ html, body {
   line-height: 1.3;
 }
 
-.difficulty-badge {
+/* Premium Difficulty Badge Styles */
+.diff-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.75rem;
+  gap: 0.5rem; /* Better spacing between dot and text */
+  padding: 0.375rem 1rem; /* Balanced padding */
   border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 700; /* Bold for premium look */
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em; /* Crisp letter spacing */
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle depth */
+  border-width: 2px;
+  border-style: solid;
+  transition: all 0.2s ease;
 }
 
-.difficulty-badge::before {
+.diff-badge::before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
+  background: currentColor; /* Match text color */
+  opacity: 0.9;
 }
 
-.difficulty-badge.easy {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #334155;
+/* Easy - Fresh Mint/Emerald */
+.diff-badge.diff-easy {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); /* emerald gradient */
+  border-color: #10b981; /* emerald-500 */
+  color: #065f46; /* emerald-900 */
 }
 
-.difficulty-badge.easy::before {
-  background: #10b981;
+/* Medium - Rich Amber/Gold */
+.diff-badge.diff-medium {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); /* amber gradient */
+  border-color: #f59e0b; /* amber-500 */
+  color: #92400e; /* amber-900 */
 }
 
-.difficulty-badge.medium {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  color: #334155;
+/* Hard - Soft Rose/Red */
+.diff-badge.diff-hard {
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%); /* red gradient */
+  border-color: #ef4444; /* red-500 */
+  color: #991b1b; /* red-900 */
 }
 
-.difficulty-badge.medium::before {
-  background: #f59e0b;
-}
-
-.difficulty-badge.hard {
-  background: #fff1f2;
-  border: 1px solid #fecdd3;
-  color: #334155;
-}
-
-.difficulty-badge.hard::before {
-  background: #f43f5e;
+.diff-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
+  gap: 0.5rem;
+  padding: 0.375rem 1rem;
+  border-radius: 999px; /* Smooth pill shape */
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid; /* Consistent 1px border */
+  box-sizing: border-box; /* Include border in dimensions */
+  transform: translateZ(0); /* Hardware acceleration for smooth rendering */
+  -webkit-font-smoothing: antialiased; /* Smooth text rendering */
 }
 
 .status-badge::before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 7px; /* Slightly larger dot */
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .status-badge.pending {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  color: #334155;
+  background: #fef3c7; /* amber-100 - warm pending color */
+  border-color: #f59e0b; /* amber-500 - strong visible border */
+  color: #78350f; /* amber-950 - deep dark text */
 }
 
 .status-badge.pending::before {
-  background: #f59e0b;
+  background: #f59e0b; /* amber-500 - bright dot */
 }
 
 .status-badge.completed {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #334155;
+  background: #d1fae5; /* emerald-200 - fresh success color */
+  border-color: #10b981; /* emerald-500 - strong visible border */
+  color: #064e3b; /* emerald-950 - deep dark text */
 }
 
 .status-badge.completed::before {
-  background: #10b981;
+  background: #10b981; /* emerald-500 - bright dot */
+}
+
+.status-badge.failed {
+  background: #fecaca; /* red-200 - soft error color */
+  border-color: #ef4444; /* red-500 - strong visible border */
+  color: #7f1d1d; /* red-950 - deep dark text */
+}
+
+.status-badge.failed::before {
+  background: #ef4444; /* red-500 - bright dot */
 }
 
 .feedback-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.25rem 0.75rem;
+  padding: 0.3rem 0.875rem;
   border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600; /* Bolder for premium look */
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  white-space: normal;
-  word-wrap: break-word;
-  max-width: 100%;
+  letter-spacing: 0.075em; /* Increased spacing */
+  white-space: normal; /* Allow wrapping */
+  word-break: keep-all; /* Don't break words in middle */
+  overflow-wrap: normal; /* Keep words intact */
+  line-height: 1.4; /* Comfortable line spacing */
+  max-width: 140px; /* Fixed max width for layout control */
+  text-align: center; /* Center multi-line text */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); /* Subtle depth */
 }
 
 .feedback-badge::before {
@@ -611,43 +646,43 @@ html, body {
 }
 
 .feedback-badge.excellent {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #334155;
+  background: #d1fae5; /* Stronger emerald-200 */
+  border: 1.5px solid #6ee7b7; /* emerald-300 - more visible */
+  color: #065f46; /* emerald-900 - darker text */
 }
 
 .feedback-badge.excellent::before {
-  background: #10b981;
+  background: #10b981; /* emerald-500 */
 }
 
 .feedback-badge.good {
-  background: #dbeafe;
-  border: 1px solid #bfdbfe;
-  color: #334155;
+  background: #bfdbfe; /* Stronger blue-200 */
+  border: 1.5px solid #60a5fa; /* blue-400 - clearer border */
+  color: #1e3a8a; /* blue-900 - darker text */
 }
 
 .feedback-badge.good::before {
-  background: #3b82f6;
+  background: #3b82f6; /* blue-500 */
 }
 
 .feedback-badge.average {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  color: #334155;
+  background: #fef3c7; /* Stronger amber-100 */
+  border: 1.5px solid #fbbf24; /* amber-400 - clearer border */
+  color: #92400e; /* amber-900 - darker text */
 }
 
 .feedback-badge.average::before {
-  background: #f59e0b;
+  background: #f59e0b; /* amber-500 */
 }
 
 .feedback-badge.needs-improvement {
-  background: #fff1f2;
-  border: 1px solid #fecdd3;
-  color: #334155;
+  background: #fecaca; /* Stronger red-200 */
+  border: 1.5px solid #f87171; /* red-400 - more visible */
+  color: #991b1b; /* red-900 - darker text */
 }
 
 .feedback-badge.needs-improvement::before {
-  background: #f43f5e;
+  background: #ef4444; /* red-500 */
 }
 
 .quiz-prompt {

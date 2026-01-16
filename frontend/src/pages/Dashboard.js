@@ -512,7 +512,7 @@ const Dashboard = () => {
         <div className="quiz-card-header" style={{ paddingLeft: onSelect ? '40px' : '0' }}>
           <h3>{quiz.quiz_name || 'Untitled Quiz'}</h3>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span className={`difficulty-badge ${(quiz.difficulty_level || 'medium').toLowerCase()}`}>
+            <span className={`diff-badge diff-${(quiz.difficulty_level || 'medium').toLowerCase()}`}>
               {quiz.difficulty_level || 'Medium'}
             </span>
             {onShare && user?.role === 'TEACHER' && (
@@ -642,7 +642,7 @@ const Dashboard = () => {
       <div className="test-card-header" style={{ paddingLeft: onSelect ? '40px' : '0' }}>
         <h3>{test.quiz_name}</h3>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span className={`difficulty-badge ${test.difficulty_level?.toLowerCase() || 'medium'}`}>
+          <span className={`diff-badge diff-${test.difficulty_level?.toLowerCase() || 'medium'}`}>
             {test.difficulty_level || 'Medium'}
           </span>
           {!isPending && feedbackLabel && (
@@ -675,7 +675,7 @@ const Dashboard = () => {
               <span>📝 {totalQuestions} questions</span>
             </p>
             <p className="test-status">
-              <span className="status-badge pending">⏳ Pending</span>
+              <span className="status-badge pending">Pending</span>
             </p>
             <p className="test-date">Started: {formatDate(test.start_time)}</p>
           </>
@@ -988,7 +988,10 @@ const Dashboard = () => {
                               <strong>{quiz.quiz_name}</strong>
                             </td>
                             <td>
-                              <span className={`difficulty-badge ${quiz.difficulty_level.toLowerCase()}`}>
+                              <span 
+                                className={`diff-badge diff-${quiz.difficulty_level.toLowerCase()}`}
+                                title={quiz.difficulty_level}
+                              >
                                 {quiz.difficulty_level}
                               </span>
                             </td>
@@ -1156,7 +1159,10 @@ const Dashboard = () => {
                                 <strong>{quiz.quiz_name || 'Untitled Quiz'}</strong>
                               </td>
                               <td>
-                                <span className={`difficulty-badge ${(quiz.difficulty_level || 'medium').toLowerCase()}`}>
+                                <span 
+                                  className={`diff-badge diff-${(quiz.difficulty_level || 'medium').toLowerCase()}`}
+                                  title={quiz.difficulty_level || 'Medium'}
+                                >
                                   {quiz.difficulty_level || 'Medium'}
                                 </span>
                               </td>
@@ -1284,14 +1290,17 @@ const Dashboard = () => {
                               <strong>{test.quiz_name}</strong>
                             </td>
                             <td>
-                              <span className={`difficulty-badge ${test.difficulty_level?.toLowerCase() || 'medium'}`}>
+                              <span 
+                                className={`diff-badge diff-${test.difficulty_level?.toLowerCase() || 'medium'}`}
+                                title={test.difficulty_level || 'Medium'}
+                              >
                                 {test.difficulty_level || 'Medium'}
                               </span>
                             </td>
                             <td>📝 {test.total_questions || test.total_no_questions || 0}</td>
                             <td>
                               <span className="status-badge pending">
-                                ⏳ Pending
+                                Pending
                               </span>
                             </td>
                             <td>{formatDate(test.start_time)}</td>
@@ -1416,7 +1425,10 @@ const Dashboard = () => {
                                 <strong>{test.quiz_name}</strong>
                               </td>
                               <td>
-                                <span className={`difficulty-badge ${test.difficulty_level?.toLowerCase() || 'medium'}`}>
+                                <span 
+                                  className={`diff-badge diff-${test.difficulty_level?.toLowerCase() || 'medium'}`}
+                                  title={test.difficulty_level || 'Medium'}
+                                >
                                   {test.difficulty_level || 'Medium'}
                                 </span>
                               </td>
@@ -1425,7 +1437,10 @@ const Dashboard = () => {
                                 <strong>{score}/{totalQuestions}</strong>
                               </td>
                               <td>
-                                <span className={`feedback-badge ${feedbackClass}`}>
+                                <span 
+                                  className={`feedback-badge ${feedbackClass}`}
+                                  title={feedbackLabel}
+                                >
                                   {feedbackLabel}
                                 </span>
                               </td>
