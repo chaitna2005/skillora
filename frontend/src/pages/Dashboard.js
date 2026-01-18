@@ -440,6 +440,35 @@ const Dashboard = () => {
     return 'needs-improvement';
   };
 
+  // Format feedback label for display (short form)
+  const formatFeedbackLabel = (label) => {
+    const mapping = {
+      'Excellent': 'Excel',
+      'Good': 'Good',
+      'Average': 'Avg',
+      'Needs Improvement': 'Improve',
+      'N/A': 'N/A'
+    };
+    return mapping[label] || label;
+  };
+
+  // Format status label for display (short form)
+  const formatStatusLabel = (status) => {
+    const mapping = {
+      'Pending': 'Pend',
+      'Completed': 'Done',
+      'In Progress': 'Prog'
+    };
+    return mapping[status] || status;
+  };
+
+  // Format difficulty label for display (short form)
+  const formatDifficultyLabel = (difficulty) => {
+    if (!difficulty) return 'Med'; // Default to Med if no difficulty
+    const normalized = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+    return normalized === 'Medium' ? 'Med' : normalized;
+  };
+
   const handleShareQuiz = async (quizId) => {
     try {
       const userId = getUserId();
@@ -513,7 +542,7 @@ const Dashboard = () => {
           <h3>{quiz.quiz_name || 'Untitled Quiz'}</h3>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span className={`diff-badge diff-${(quiz.difficulty_level || 'medium').toLowerCase()}`}>
-              {quiz.difficulty_level || 'Medium'}
+              {formatDifficultyLabel(quiz.difficulty_level || 'Medium')}
             </span>
             {onShare && user?.role === 'TEACHER' && (
               <button 
@@ -643,11 +672,11 @@ const Dashboard = () => {
         <h3>{test.quiz_name}</h3>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className={`diff-badge diff-${test.difficulty_level?.toLowerCase() || 'medium'}`}>
-            {test.difficulty_level || 'Medium'}
+            {formatDifficultyLabel(test.difficulty_level || 'Medium')}
           </span>
           {!isPending && feedbackLabel && (
             <span className={`feedback-badge ${feedbackClass}`}>
-              {feedbackLabel}
+              {formatFeedbackLabel(feedbackLabel)}
             </span>
           )}
           {isPending && onDelete && (
@@ -675,7 +704,7 @@ const Dashboard = () => {
               <span>📝 {totalQuestions} questions</span>
             </p>
             <p className="test-status">
-              <span className="status-badge pending">Pending</span>
+              <span className="status-badge pending">{formatStatusLabel('Pending')}</span>
             </p>
             <p className="test-date">Started: {formatDate(test.start_time)}</p>
           </>
@@ -992,7 +1021,7 @@ const Dashboard = () => {
                                 className={`diff-badge diff-${quiz.difficulty_level.toLowerCase()}`}
                                 title={quiz.difficulty_level}
                               >
-                                {quiz.difficulty_level}
+                                {formatDifficultyLabel(quiz.difficulty_level)}
                               </span>
                             </td>
                             <td>📝 {quiz.total_no_questions}</td>
@@ -1163,7 +1192,7 @@ const Dashboard = () => {
                                   className={`diff-badge diff-${(quiz.difficulty_level || 'medium').toLowerCase()}`}
                                   title={quiz.difficulty_level || 'Medium'}
                                 >
-                                  {quiz.difficulty_level || 'Medium'}
+                                  {formatDifficultyLabel(quiz.difficulty_level || 'Medium')}
                                 </span>
                               </td>
                               <td>📝 {quiz.total_no_questions || quiz.total_questions || 0}</td>
@@ -1294,13 +1323,13 @@ const Dashboard = () => {
                                 className={`diff-badge diff-${test.difficulty_level?.toLowerCase() || 'medium'}`}
                                 title={test.difficulty_level || 'Medium'}
                               >
-                                {test.difficulty_level || 'Medium'}
+                                {formatDifficultyLabel(test.difficulty_level || 'Medium')}
                               </span>
                             </td>
                             <td>📝 {test.total_questions || test.total_no_questions || 0}</td>
                             <td>
                               <span className="status-badge pending">
-                                Pending
+                                {formatStatusLabel('Pending')}
                               </span>
                             </td>
                             <td>{formatDate(test.start_time)}</td>
@@ -1429,7 +1458,7 @@ const Dashboard = () => {
                                   className={`diff-badge diff-${test.difficulty_level?.toLowerCase() || 'medium'}`}
                                   title={test.difficulty_level || 'Medium'}
                                 >
-                                  {test.difficulty_level || 'Medium'}
+                                  {formatDifficultyLabel(test.difficulty_level || 'Medium')}
                                 </span>
                               </td>
                               <td>📝 {totalQuestions}</td>
@@ -1441,7 +1470,7 @@ const Dashboard = () => {
                                   className={`feedback-badge ${feedbackClass}`}
                                   title={feedbackLabel}
                                 >
-                                  {feedbackLabel}
+                                  {formatFeedbackLabel(feedbackLabel)}
                                 </span>
                               </td>
                               <td>{formatDate(test.completed_time)}</td>

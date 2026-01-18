@@ -1228,3 +1228,10 @@ html, body {
     overflow-x: hidden;
   }
 }
+
+/* ===== FIX DIFF BADGE CLIPPING ===== */
+/* Stop clipping the diff badge border in table cells */
+.quiz-table td:has(.diff-badge) {
+  overflow: visible !important;
+  padding-right: 12px !important;
+}

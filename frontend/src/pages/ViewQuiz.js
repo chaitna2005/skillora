@@ -10,6 +10,13 @@ const ViewQuiz = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Format difficulty label for display (short form)
+  const formatDifficultyLabel = (difficulty) => {
+    if (!difficulty) return 'Med';
+    const normalized = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+    return normalized === 'Medium' ? 'Med' : normalized;
+  };
+
   useEffect(() => {
     loadQuiz();
   }, [quizId]);
@@ -53,7 +60,7 @@ const ViewQuiz = () => {
           <h1>{quiz.quiz_name}</h1>
           <div className="quiz-meta">
             <span className={`difficulty-badge ${quiz.difficulty_level.toLowerCase()}`}>
-              {quiz.difficulty_level}
+              {formatDifficultyLabel(quiz.difficulty_level)}
             </span>
             <span>📝 {quiz.total_no_questions} questions</span>
           </div>

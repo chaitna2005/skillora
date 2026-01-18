@@ -22,6 +22,13 @@ const TakeTest = () => {
   const [error, setError] = useState('');
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
 
+  // Format difficulty label for display (short form)
+  const formatDifficultyLabel = (difficulty) => {
+    if (!difficulty) return 'Med';
+    const normalized = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+    return normalized === 'Medium' ? 'Med' : normalized;
+  };
+
   useEffect(() => {
     // Reset state when quizId changes (e.g., when retaking)
     setQuiz(null);
@@ -412,7 +419,7 @@ const TakeTest = () => {
           <p className="test-meta">
             <span>{quiz.questions.length} Questions</span>
             <span className={`difficulty ${quiz.difficulty_level.toLowerCase()}`}>
-              {quiz.difficulty_level}
+              {formatDifficultyLabel(quiz.difficulty_level)}
             </span>
           </p>
         </div>

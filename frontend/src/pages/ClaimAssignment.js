@@ -14,6 +14,13 @@ const ClaimAssignment = () => {
   const [claiming, setClaiming] = useState(false);
   const [claimedAssignment, setClaimedAssignment] = useState(null);
 
+  // Format difficulty label for display (short form)
+  const formatDifficultyLabel = (difficulty) => {
+    if (!difficulty) return 'Med';
+    const normalized = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+    return normalized === 'Medium' ? 'Med' : normalized;
+  };
+
   useEffect(() => {
     loadAssignmentInfo();
   }, [token]);
@@ -97,7 +104,7 @@ const ClaimAssignment = () => {
         <div className="create-quiz-card">
           <h2>Assignment: {assignmentInfo.quiz_name}</h2>
           <p>📝 {assignmentInfo.total_questions} questions</p>
-          <p>📊 Difficulty: {assignmentInfo.difficulty_level}</p>
+          <p>📊 Difficulty: {formatDifficultyLabel(assignmentInfo.difficulty_level)}</p>
           <p style={{ marginTop: '20px', fontWeight: 'bold' }}>Please log in or sign up to access this assignment.</p>
           <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
             <button 
@@ -124,7 +131,7 @@ const ClaimAssignment = () => {
         <div className="create-quiz-card">
           <h2>Assignment: {assignmentInfo.quiz_name}</h2>
           <p>📝 {assignmentInfo.total_questions} questions</p>
-          <p>📊 Difficulty: {assignmentInfo.difficulty_level}</p>
+          <p>📊 Difficulty: {formatDifficultyLabel(assignmentInfo.difficulty_level)}</p>
           <p style={{ marginTop: '20px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '8px', border: '1px solid #ffc107' }}>
             This assignment is for students. Teachers can view results in the dashboard.
           </p>
@@ -159,7 +166,7 @@ const ClaimAssignment = () => {
           <div>
             <h2>Assignment: {assignmentInfo.quiz_name}</h2>
             <p>📝 {assignmentInfo.total_questions} questions</p>
-            <p>📊 Difficulty: {assignmentInfo.difficulty_level}</p>
+            <p>📊 Difficulty: {formatDifficultyLabel(assignmentInfo.difficulty_level)}</p>
             <p style={{ marginTop: '20px', color: '#4caf50', fontWeight: 'bold' }}>
               Assignment claimed successfully!
             </p>
@@ -174,7 +181,7 @@ const ClaimAssignment = () => {
           <div>
             <h2>Assignment: {assignmentInfo.quiz_name}</h2>
             <p>📝 {assignmentInfo.total_questions} questions</p>
-            <p>📊 Difficulty: {assignmentInfo.difficulty_level}</p>
+            <p>📊 Difficulty: {formatDifficultyLabel(assignmentInfo.difficulty_level)}</p>
             <p style={{ marginTop: '20px' }}>Preparing assignment...</p>
           </div>
         )}
