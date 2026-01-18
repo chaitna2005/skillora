@@ -64,31 +64,12 @@ Rules:
 5. Questions should be unambiguous and educational
 6. Generate a short, relevant quiz title (max 5 words)
 7. Return ONLY valid JSON, no additional text
+8. Do not include any additional text or comments in the response   
+9. MAKE SURE THE QUESTIONS ARE UNIQUE AND NOT DUPLICATE
+10. MAKE SURE THE CORRECT ANSWER IS ALWAYS PROVIDED IN THE OPTIONS
+11. MAKE SURE THE QUESTIONS ARE NOT TOO LONG OR TOO SHORT
+12. DO NOT GENERATE QUIZ WITHOUT THE CORRECT ANSWER PROVIDED IN THE OPTIONS
 
-CRITICAL RULES FOR PREFIX/INFIX/POSTFIX EXPRESSIONS:
-- For Prefix → Infix conversion questions:
-  * Input MUST be a VALID prefix (Polish) notation expression
-  * Prefix expressions MUST start with an operator (+, -, *, /)
-  * Every operator MUST have exactly two operands
-  * Format: operator operand1 operand2 (e.g., "+ 3 4", "* + 2 3 4")
-  * NEVER use infix expressions as input (e.g., "3 + 4" is WRONG for prefix input)
-  * NEVER use invalid or incomplete prefix expressions
-  * The correct answer must be the EXACT infix conversion (e.g., "(3 + 4)" or "3 + 4")
-  
-- For Infix → Prefix conversion questions:
-  * Input MUST be a VALID infix expression
-  * Output must be valid prefix notation
-  
-- For Postfix → Infix conversion questions:
-  * Input MUST be a VALID postfix (Reverse Polish) notation expression
-  * Postfix expressions MUST end with an operator
-  * Format: operand1 operand2 operator (e.g., "3 4 +", "2 3 + 4 *")
-  
-- Expression validation:
-  * Operators: +, -, *, /, ^
-  * Operands: numbers or variables
-  * Every operator must have exactly 2 operands
-  * Expressions must be complete and syntactically valid
 
 Response format:
 {
