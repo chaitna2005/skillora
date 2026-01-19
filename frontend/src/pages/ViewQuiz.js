@@ -83,6 +83,15 @@ const ViewQuiz = () => {
           <p>📖 Preview Mode - Questions are shown for review only. Click "Take Test" to start the quiz.</p>
         </div>
 
+        {/* Display Prompt */}
+        <div className="prompt-display-card">
+          {quiz.prompt ? (
+            <p className="prompt-text">{quiz.prompt}</p>
+          ) : (
+            <p className="prompt-text no-prompt">Prompt not available.</p>
+          )}
+        </div>
+
         <div className="questions-list">
           {quiz.questions && quiz.questions.map((question, index) => (
             <div key={question.question_id} className="question-preview-card">
