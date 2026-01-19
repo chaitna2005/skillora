@@ -41,6 +41,20 @@ const MyTests = () => {
     });
   };
 
+  const getFeedbackLabel = (percentage) => {
+    if (percentage >= 80) return 'EXCELLENT';
+    if (percentage >= 60) return 'GOOD';
+    if (percentage >= 40) return 'AVERAGE';
+    return 'NEEDS_IMPROVEMENT';
+  };
+
+  const getFeedbackClass = (percentage) => {
+    if (percentage >= 80) return 'excellent';
+    if (percentage >= 60) return 'good';
+    if (percentage >= 40) return 'average';
+    return 'needs-improvement';
+  };
+
   const handleViewResult = (test) => {
     // CRITICAL: Navigate using quiz_id (backend will fetch latest completed attempt)
     // test can be either uqtId (number) or test object with quiz_id
@@ -98,15 +112,26 @@ const MyTests = () => {
             </button>
           </div>
         ) : (
-          tests.map(test => (
+          tests.map(test => {
+            // Calculate percentage from actual score
+            const percentage = test.total_questions > 0 
+              ? Math.round((test.total_correct / test.total_questions) * 100) 
+              : 0;
+            
+            const feedbackLabel = getFeedbackLabel(percentage);
+            const feedbackClass = getFeedbackClass(percentage);
+            
+            return (
             <div key={test.uqt_id} className="test-item">
               <div className="test-item-header">
                 <div>
                   <h3>{test.quiz_name}</h3>
                   <p className="test-date">{formatDate(test.completed_time)}</p>
                 </div>
-                <div className={`test-score ${test.result >= 70 ? 'pass' : 'fail'}`}>
-                  {test.result}%
+                <div className="feedback-badge-wrapper">
+                  <span className={`feedback-badge ${feedbackClass}`}>
+                    {feedbackLabel}
+                  </span>
                 </div>
               </div>
               
@@ -115,6 +140,7 @@ const MyTests = () => {
                   <span>✅ {test.total_correct} correct</span>
                   <span>❌ {test.total_questions - test.total_correct} incorrect</span>
                   <span>📝 {test.total_questions} total</span>
+                  <span>📊 <strong>{percentage}%</strong></span>
                 </div>
                 
                 <button 
@@ -125,7 +151,8 @@ const MyTests = () => {
                 </button>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

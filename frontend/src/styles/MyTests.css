@@ -91,7 +91,7 @@
   padding: 1.5rem;
   display: flex;
   justify-content: space-between;
-  align-items: start;
+  align-items: flex-start;
   gap: 1rem;
   background-color: #f9fafb;
   border-bottom: 2px solid var(--border-color);
@@ -106,6 +106,12 @@
 .test-date {
   color: var(--text-secondary);
   font-size: 0.9rem;
+}
+
+.feedback-badge-wrapper {
+  flex-shrink: 0;
+  max-width: 240px;
+  overflow: hidden;
 }
 
 .test-score {
@@ -125,6 +131,71 @@
 .test-score.fail {
   background-color: #fee2e2;
   color: #991b1b;
+}
+
+.feedback-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.875rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.075em;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feedback-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.feedback-badge.excellent {
+  background: #d1fae5;
+  border: 1.5px solid #6ee7b7;
+  color: #065f46;
+}
+
+.feedback-badge.excellent::before {
+  background: #10b981;
+}
+
+.feedback-badge.good {
+  background: #bfdbfe;
+  border: 1.5px solid #60a5fa;
+  color: #1e3a8a;
+}
+
+.feedback-badge.good::before {
+  background: #3b82f6;
+}
+
+.feedback-badge.average {
+  background: #fef3c7;
+  border: 1.5px solid #fbbf24;
+  color: #92400e;
+}
+
+.feedback-badge.average::before {
+  background: #f59e0b;
+}
+
+.feedback-badge.needs-improvement {
+  background: #fecaca;
+  border: 1.5px solid #f87171;
+  color: #991b1b;
+}
+
+.feedback-badge.needs-improvement::before {
+  background: #ef4444;
 }
 
 .test-item-body {
