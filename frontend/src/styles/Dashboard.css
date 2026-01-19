@@ -261,7 +261,7 @@ html, body {
 
 .quiz-table {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto; /* Changed from fixed to auto for better column flexibility */
   border-collapse: collapse;
   font-size: 0.95rem;
   color: #1e293b; /* Darker default text - slate-800 */
@@ -280,8 +280,6 @@ html, body {
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.75px; /* More spacing */
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -303,18 +301,20 @@ html, body {
   padding: 1.125rem 1rem;
   vertical-align: middle;
   color: #475569; /* Darker text - slate-600 */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .quiz-name-cell {
   color: #0f172a; /* Darker - slate-900 */
   font-size: 1rem;
+  max-width: 300px;
+}
+
+.quiz-name-cell strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 0;
+  display: block;
+  max-width: 100%;
 }
 
 .quiz-table td strong {
@@ -358,24 +358,6 @@ html, body {
   width: 23%;
 }
 
-/* For 6-column tables (Pending Tests) - slightly adjusted */
-.quiz-table thead tr th:nth-child(7) {
-  width: auto;
-}
-
-/* For 7-column tables (Completed Tests) - Score and Feedback columns */
-.quiz-table thead tr th:nth-child(7),
-.quiz-table tbody tr td:nth-child(7) {
-  width: 12%;
-}
-
-.quiz-table thead tr th:nth-child(8),
-.quiz-table tbody tr td:nth-child(8) {
-  width: 18%;
-  overflow: visible;
-  white-space: normal;
-}
-
 /* Actions column - compact fixed width */
 .quiz-table th:last-child,
 .quiz-table td:last-child {
@@ -390,9 +372,41 @@ html, body {
 /* Feedback badge column - controlled width with wrapping */
 .quiz-table td .feedback-badge {
   display: inline-flex;
-  max-width: 140px; /* Match feedback badge max-width */
+  max-width: 200px; /* Increased to accommodate full words like "Needs Improvement" */
   white-space: normal; /* Allow wrapping in table */
   line-height: 1.3;
+}
+
+/* Completed table adjustments (table with Feedback badge) */
+/* Quiz Name in Completed table */
+.quiz-table tbody tr:has(td .feedback-badge) td:nth-child(2) {
+  width: 25%; /* Reduced to make room for Feedback and Date */
+}
+
+/* Difficulty in Completed table */
+.quiz-table tbody tr:has(td .feedback-badge) td:nth-child(3) {
+  width: 12%; /* Compact for difficulty badge */
+}
+
+/* Score column (before Feedback in Completed table) */
+.quiz-table tbody tr:has(td .feedback-badge) td:nth-child(4) {
+  width: 10%; /* Compact width for score like "5/10" */
+  min-width: 80px;
+}
+
+/* Feedback column - needs more space for long badges */
+.quiz-table td:has(.feedback-badge) {
+  padding-right: 2rem; /* Extra spacing between Feedback and next column */
+  min-width: 180px; /* Ensure enough width for long feedback text like "NEEDS IMPROVEMENT" */
+  width: 22%; /* Allocate more width percentage */
+  overflow: visible; /* Prevent clipping */
+}
+
+/* Date column (after Feedback) has proper spacing */
+.quiz-table td:has(.feedback-badge) + td {
+  padding-left: 1.5rem; /* Extra spacing from Feedback column */
+  min-width: 140px; /* Ensure Date has enough room */
+  width: 16%; /* Give Date column adequate width */
 }
 
 /* Checkbox column - fixed small width */
@@ -517,13 +531,11 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.08em; /* Crisp letter spacing */
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 110px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle depth */
   border-width: 2px;
   border-style: solid;
   transition: all 0.2s ease;
+  min-width: fit-content;
 }
 
 .diff-badge::before {

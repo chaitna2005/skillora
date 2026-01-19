@@ -455,33 +455,23 @@ const Dashboard = () => {
     return 'needs-improvement';
   };
 
-  // Format feedback label for display (short form)
+  // Format feedback label for display (full words)
   const formatFeedbackLabel = (label) => {
-    const mapping = {
-      'Excellent': 'Excel',
-      'Good': 'Good',
-      'Average': 'Avg',
-      'Needs Improvement': 'Improve',
-      'N/A': 'N/A'
-    };
-    return mapping[label] || label;
+    // Return full label without shortcuts
+    return label;
   };
 
-  // Format status label for display (short form)
+  // Format status label for display (full words)
   const formatStatusLabel = (status) => {
-    const mapping = {
-      'Pending': 'Pend',
-      'Completed': 'Done',
-      'In Progress': 'Prog'
-    };
-    return mapping[status] || status;
+    // Return full status label without shortcuts
+    return status;
   };
 
-  // Format difficulty label for display (short form)
+  // Format difficulty label for display (full readable words)
   const formatDifficultyLabel = (difficulty) => {
-    if (!difficulty) return 'Med'; // Default to Med if no difficulty
+    if (!difficulty) return 'Medium'; // Default to Medium if no difficulty
     const normalized = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
-    return normalized === 'Medium' ? 'Med' : normalized;
+    return normalized; // Return full word: Easy, Medium, Hard
   };
 
   const handleShareQuiz = async (quizId) => {
@@ -1490,7 +1480,6 @@ const Dashboard = () => {
                           <th style={{ width: '40px' }}></th>
                           <th>Quiz Name</th>
                           <th>Diff.</th>
-                          <th>Qs</th>
                           <th>Score</th>
                           <th>Feedback</th>
                           <th>Date</th>
@@ -1532,7 +1521,6 @@ const Dashboard = () => {
                                   {formatDifficultyLabel(test.difficulty_level || 'Medium')}
                                 </span>
                               </td>
-                              <td>📝 {totalQuestions}</td>
                               <td>
                                 <strong>{score}/{totalQuestions}</strong>
                               </td>
