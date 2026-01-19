@@ -21,6 +21,8 @@ const TakeTest = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [unansweredCount, setUnansweredCount] = useState(0);
 
   // Format difficulty label for display (short form)
   const formatDifficultyLabel = (difficulty) => {
@@ -229,12 +231,17 @@ const TakeTest = () => {
     );
 
     if (unansweredQuestions.length > 0) {
-      const confirm = window.confirm(
-        `You have ${unansweredQuestions.length} unanswered question(s). Do you want to submit anyway?`
-      );
-      if (!confirm) return;
+      // Show custom modal instead of browser confirm
+      setUnansweredCount(unansweredQuestions.length);
+      setShowSubmitModal(true);
+      return;
     }
 
+    // Proceed with submission
+    await submitTest();
+  };
+
+  const submitTest = async () => {
     try {
       setSubmitting(true);
       
@@ -345,6 +352,34 @@ const TakeTest = () => {
   const goToQuestion = (index) => {
     setCurrentQuestionIndex(index);
   };
+
+  const handleConfirmSubmit = async () => {
+    setShowSubmitModal(false);
+    await submitTest();
+  };
+
+  const handleCancelSubmit = () => {
+    setShowSubmitModal(false);
+  };
+
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showSubmitModal) {
+        setShowSubmitModal(false);
+      }
+    };
+
+    if (showSubmitModal) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [showSubmitModal]);
 
   const nextQuestion = async () => {
     // Save current question's answer before moving to next
@@ -583,6 +618,25 @@ const TakeTest = () => {
           </button>
         )}
       </div>
+
+      {/* Submit Confirmation Modal */}
+      {showSubmitModal && (
+        <div className="modal-overlay" onClick={handleCancelSubmit}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <p style={{ fontSize: '15px', color: '#475569', margin: '0 0 24px 0', lineHeight: '1.5' }}>
+              You have {unansweredCount} unanswered question(s). Do you want to submit anyway?
+            </p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={handleCancelSubmit}>
+                Go Back
+              </button>
+              <button className="btn-delete" onClick={handleConfirmSubmit}>
+                Submit Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
