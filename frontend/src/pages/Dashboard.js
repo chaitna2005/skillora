@@ -26,8 +26,7 @@ import {
   Table, 
   TableCellBold, 
   TableCellActions,
-  ControlledTabs,
-  ConfirmModal
+  ControlledTabs
 } from '../components/ui';
 import '../styles/Dashboard.css';
 
@@ -44,6 +43,9 @@ const Dashboard = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // State for individual item deletion
+  const [itemToDelete, setItemToDelete] = useState(null);
   
   // Selection state for each section
   const [selectedQuizzes, setSelectedQuizzes] = useState(new Set());
@@ -83,6 +85,31 @@ const Dashboard = () => {
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, [user]);
+
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showConfirmModal) {
+        if (itemToDelete) {
+          setShowConfirmModal(false);
+          setItemToDelete(null);
+        } else {
+          cancelDeleteAll();
+        }
+      }
+    };
+
+    if (showConfirmModal) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [showConfirmModal, itemToDelete]);
 
   // Refresh data when component becomes visible (user navigates back)
   useEffect(() => {
@@ -170,40 +197,28 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteQuiz = async (quizId, e) => {
+  const handleDeleteQuiz = (quizId, e) => {
     e.stopPropagation();
     const userId = getUserId();
     if (!userId) {
       alert('User ID not found. Please log in again.');
       return;
     }
-    if (window.confirm('Are you sure you want to delete this quiz?')) {
-      try {
-        await deleteQuiz(userId, quizId);
-        setMyQuizzes(myQuizzes.filter(q => q.quiz_id !== quizId));
-      } catch (error) {
-        alert('Failed to delete quiz. Please try again.');
-        console.error(error);
-      }
-    }
+    // Open modal for confirmation
+    setItemToDelete({ type: 'quiz', id: quizId, userId });
+    setShowConfirmModal(true);
   };
 
-  const handleDeletePendingTest = async (uqtId, e) => {
+  const handleDeletePendingTest = (uqtId, e) => {
     e.stopPropagation();
     const userId = getUserId();
     if (!userId) {
       alert('User ID not found. Please log in again.');
       return;
     }
-    if (window.confirm('Are you sure you want to delete this pending test?')) {
-      try {
-        await deletePendingTest(userId, uqtId);
-        setPendingTests(pendingTests.filter(t => t.uqt_id !== uqtId));
-      } catch (error) {
-        alert('Failed to delete pending test. Please try again.');
-        console.error(error);
-      }
-    }
+    // Open modal for confirmation
+    setItemToDelete({ type: 'pendingTest', id: uqtId, userId });
+    setShowConfirmModal(true);
   };
 
   const handleDeleteAll = (section) => {
@@ -740,6 +755,9 @@ const Dashboard = () => {
   const ConfirmModal = () => {
     if (!showConfirmModal) return null;
     
+    // Check if this is an individual item delete
+    const isIndividualDelete = itemToDelete !== null;
+    
     const isSelectedDelete = confirmAction && confirmAction.type === 'selected';
     const section = isSelectedDelete ? confirmAction.section : confirmAction;
     
@@ -764,32 +782,85 @@ const Dashboard = () => {
       return selections[section] || 0;
     };
     
-    const handleConfirm = () => {
-      if (isSelectedDelete) {
+    const handleConfirm = async () => {
+      if (isIndividualDelete) {
+        // Handle individual item deletion
+        try {
+          if (itemToDelete.type === 'quiz') {
+            await deleteQuiz(itemToDelete.userId, itemToDelete.id);
+            setMyQuizzes(myQuizzes.filter(q => q.quiz_id !== itemToDelete.id));
+          } else if (itemToDelete.type === 'pendingTest') {
+            await deletePendingTest(itemToDelete.userId, itemToDelete.id);
+            setPendingTests(pendingTests.filter(t => t.uqt_id !== itemToDelete.id));
+          }
+          setShowConfirmModal(false);
+          setItemToDelete(null);
+        } catch (error) {
+          alert(`Failed to delete ${itemToDelete.type === 'quiz' ? 'quiz' : 'pending test'}. Please try again.`);
+          console.error(error);
+        }
+      } else if (isSelectedDelete) {
         confirmDeleteSelected();
       } else {
         confirmDeleteAll();
       }
     };
     
+    const handleCancel = () => {
+      if (isIndividualDelete) {
+        setShowConfirmModal(false);
+        setItemToDelete(null);
+      } else {
+        cancelDeleteAll();
+      }
+    };
+    
+    // Get message for individual delete
+    const getIndividualDeleteMessage = () => {
+      if (itemToDelete.type === 'quiz') {
+        return 'Are you sure you want to delete this quiz?';
+      } else if (itemToDelete.type === 'pendingTest') {
+        return 'Are you sure you want to delete this pending test?';
+      }
+      return 'Are you sure you want to delete this item?';
+    };
+    
     return (
-      <div className="modal-overlay" onClick={cancelDeleteAll}>
+      <div className="modal-overlay" onClick={handleCancel}>
         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-          <h2>{isSelectedDelete ? 'Confirm Delete Selected' : 'Confirm Delete All'}</h2>
-          <p>
-            {isSelectedDelete 
-              ? `Are you sure you want to delete ${getSelectedCount()} selected ${getSectionName().toLowerCase()}? This action cannot be undone.`
-              : `Are you sure you want to delete all ${getSectionName()}? This action cannot be undone.`
-            }
-          </p>
-          <div className="modal-actions">
-            <button className="btn-cancel" onClick={cancelDeleteAll}>
-              Cancel
-            </button>
-            <button className="btn-delete" onClick={handleConfirm}>
-              {isSelectedDelete ? 'Delete Selected' : 'Delete All'}
-            </button>
-          </div>
+          {isIndividualDelete ? (
+            <>
+              <p style={{ fontSize: '15px', color: '#475569', margin: '0 0 24px 0', lineHeight: '1.5' }}>
+                {getIndividualDeleteMessage()}
+              </p>
+              <div className="modal-actions">
+                <button className="btn-cancel" onClick={handleCancel}>
+                  Cancel
+                </button>
+                <button className="btn-delete" onClick={handleConfirm}>
+                  OK
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2>{isSelectedDelete ? 'Confirm Delete Selected' : 'Confirm Delete All'}</h2>
+              <p>
+                {isSelectedDelete 
+                  ? `Are you sure you want to delete ${getSelectedCount()} selected ${getSectionName().toLowerCase()}? This action cannot be undone.`
+                  : `Are you sure you want to delete all ${getSectionName()}? This action cannot be undone.`
+                }
+              </p>
+              <div className="modal-actions">
+                <button className="btn-cancel" onClick={handleCancel}>
+                  Cancel
+                </button>
+                <button className="btn-delete" onClick={handleConfirm}>
+                  {isSelectedDelete ? 'Delete Selected' : 'Delete All'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
