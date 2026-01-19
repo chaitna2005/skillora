@@ -143,21 +143,25 @@ const CreateQuiz = () => {
         <form onSubmit={handleSubmit} className="create-quiz-form">
           <div className="form-group">
             <label htmlFor="prompt">
-              Quiz Prompt <span className="required">*</span>
+              Describe your quiz <span className="required">*</span>
             </label>
             <textarea
               id="prompt"
               name="prompt"
               value={formData.prompt}
               onChange={handleChange}
-              placeholder="Tell us what you'd like to learn or test. Be specific for the best results!"
+              placeholder={
+                user?.role === 'TEACHER'
+                  ? "Describe the quiz you want to create for your students (topic, chapters, key concepts, and focus areas)."
+                  : "Type what you want to practice or revise (topic + focus areas)."
+              }
               rows="5"
               required
             />
             <div className="example-prompt-box">
               <p className="example-prompt-label">📝 Example Prompt:</p>
               <p className="example-prompt-text">
-                "Create a quiz on python and java basics. Ask questions from important topics and keep them easy to understand."
+                "Create an interview-focused quiz on SQL commands. Cover SELECT, WHERE, JOINs, GROUP BY, and subqueries. Use real-world query scenarios and avoid theory-only questions."
               </p>
             </div>
           </div>
