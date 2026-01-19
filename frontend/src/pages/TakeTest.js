@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getQuiz, startTest, submitTest, getTestAnswers, saveAnswer, getHint } from '../services/api';
+import { getQuiz, startTest, submitTest as submitTestAPI, getTestAnswers, saveAnswer, getHint } from '../services/api';
 import '../styles/TakeTest.css';
 
 const TakeTest = () => {
@@ -20,6 +20,7 @@ const TakeTest = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [submitError, setSubmitError] = useState('');
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [unansweredCount, setUnansweredCount] = useState(0);
@@ -242,9 +243,15 @@ const TakeTest = () => {
   };
 
   const submitTest = async () => {
+    // Clear any previous submit errors
+    setSubmitError('');
+    setSubmitting(true);
+
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
     try {
-      setSubmitting(true);
-      
       // Save current question's answer before submitting (if on a question with answers)
       if (uqtId && quiz) {
         const currentQuestion = quiz.questions[currentQuestionIndex];
@@ -298,7 +305,7 @@ const TakeTest = () => {
       // CRITICAL: Validate uqt_id exists before submission
       if (!finalUqtId || isNaN(finalUqtId)) {
         console.error('[ERROR] uqt_id is missing or invalid:', { uqtId, finalUqtId, quizId: quiz?.quiz_id });
-        throw new Error('Test session ID (uqt_id) is missing. Cannot submit. Please start the test again.');
+        throw new Error('Test session ID is missing. Please start the test again.');
       }
       
       console.log(`[DEBUG] Using uqt_id for submission: ${finalUqtId}`);
@@ -319,10 +326,14 @@ const TakeTest = () => {
           submitDataUqtId: submitData.uqt_id, 
           finalUqtId 
         });
-        throw new Error('uqt_id mismatch in submission data');
+        throw new Error('Session ID mismatch. Please try again.');
       }
       
-      const result = await submitTest(submitData);
+      // Call the renamed API function
+      const result = await submitTestAPI(submitData);
+      
+      // Clear timeout on success
+      clearTimeout(timeoutId);
       
       // CRITICAL: Navigate to results using the SAME uqt_id
       // Clear localStorage after successful submission
@@ -342,8 +353,18 @@ const TakeTest = () => {
       // CRITICAL: Navigate to results using quiz_id (backend will fetch latest completed attempt)
       navigate(`/results/${quiz.quiz_id}`);
     } catch (err) {
-      setError('Failed to submit test. Please try again.');
-      console.error(err);
+      clearTimeout(timeoutId);
+      
+      console.error('[ERROR] Failed to submit test:', err);
+      
+      // Handle different error types
+      if (err.name === 'AbortError') {
+        setSubmitError('Request timed out. Please check your connection and try again.');
+      } else if (err.message) {
+        setSubmitError(err.message);
+      } else {
+        setSubmitError('Failed to submit test. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -448,6 +469,16 @@ const TakeTest = () => {
 
   return (
     <div className="take-test-container">
+      {/* Submit Error Toast */}
+      {submitError && (
+        <div className="error-toast">
+          <span>{submitError}</span>
+          <button onClick={() => setSubmitError('')} className="error-toast-close">
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="test-header">
         <div className="test-info">
           <h1>{quiz.quiz_name}</h1>
