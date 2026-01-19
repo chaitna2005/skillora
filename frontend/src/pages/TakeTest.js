@@ -474,7 +474,7 @@ const TakeTest = () => {
 
       <div className="question-indicators">
         <div className="palette-header">
-          <span className="palette-title">Questions</span>
+          <span className="palette-title">Question Navigator</span>
           <button 
             className="palette-toggle"
             onClick={() => setIsPaletteOpen(!isPaletteOpen)}

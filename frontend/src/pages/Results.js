@@ -95,7 +95,7 @@ const Results = () => {
   return (
     <div className="results-container">
       <div className="results-header">
-        <h1>Test Results</h1>
+        <h1>Your Test Results</h1>
         <h2>{result.quiz_name}</h2>
       </div>
 
