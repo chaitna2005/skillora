@@ -131,7 +131,7 @@ const Sidebar = () => {
             className={`sidebar-link ${isActive('/create-quiz') ? 'active' : ''}`}
             onClick={closeMobileMenu}
           >
-            <span className="link-icon">✨</span>
+            <span className="link-icon">🧠</span>
             <span className="link-text">Create Quiz</span>
           </Link>
           

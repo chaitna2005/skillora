@@ -86,22 +86,6 @@ const MyTests = () => {
               <p>Average Score</p>
             </div>
           </div>
-          
-          <div className="summary-card">
-            <div className="summary-icon">🏆</div>
-            <div className="summary-content">
-              <h3>{summary.highest_score}%</h3>
-              <p>Highest Score</p>
-            </div>
-          </div>
-          
-          <div className="summary-card">
-            <div className="summary-icon">📈</div>
-            <div className="summary-content">
-              <h3>{summary.total_questions_answered}</h3>
-              <p>Questions Answered</p>
-            </div>
-          </div>
         </div>
       )}
 
