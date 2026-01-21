@@ -11,6 +11,7 @@ import Results from './pages/Results';
 import MyTests from './pages/MyTests';
 import ViewQuiz from './pages/ViewQuiz';
 import ClaimAssignment from './pages/ClaimAssignment';
+import TeacherQuizResults from './pages/TeacherQuizResults';
 import './App.css';
 
 // Protected Route Component
@@ -96,6 +97,11 @@ function AppContent() {
             <Route path="/assign/:token" element={
               <ProtectedRoute>
                 <ClaimAssignment />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/quiz/:quizId/results" element={
+              <ProtectedRoute>
+                <TeacherQuizResults />
               </ProtectedRoute>
             } />
 

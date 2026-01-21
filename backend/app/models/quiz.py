@@ -34,12 +34,22 @@ class QuizModel:
     
     @staticmethod
     def get_quizzes_by_user(cursor: RealDictCursor, user_id: int) -> List[Dict]:
-        """Get all quizzes created by a user"""
+        """Get all quizzes created by a user with submission counts"""
         query = """
-            SELECT quiz_id, user_id, prompt, total_no_questions, difficulty_level, quiz_name, created_date
-            FROM "Quiz"
-            WHERE user_id = %s
-            ORDER BY created_date DESC
+            SELECT 
+                q.quiz_id, 
+                q.user_id, 
+                q.prompt, 
+                q.total_no_questions, 
+                q.difficulty_level, 
+                q.quiz_name, 
+                q.created_date,
+                COUNT(DISTINCT CASE WHEN uqt.completed_time IS NOT NULL THEN uqt.user_id END) as total_submissions
+            FROM "Quiz" q
+            LEFT JOIN "User_Quiz_Take" uqt ON q.quiz_id = uqt.quiz_id
+            WHERE q.user_id = %s
+            GROUP BY q.quiz_id, q.user_id, q.prompt, q.total_no_questions, q.difficulty_level, q.quiz_name, q.created_date
+            ORDER BY q.created_date DESC
         """
         print(f"[MODEL] get_quizzes_by_user querying with user_id: {user_id}")
         cursor.execute(query, (user_id,))
@@ -51,7 +61,7 @@ class QuizModel:
     
     @staticmethod
     def get_assigned_quizzes(cursor: RealDictCursor, user_id: int) -> List[Dict]:
-        """Get all quizzes assigned to a user"""
+        """Get all quizzes assigned to a user with submission counts"""
         query = """
             SELECT 
                 qa.quiz_assignment_id,
@@ -62,11 +72,14 @@ class QuizModel:
                 q.difficulty_level,
                 q.total_no_questions,
                 q.created_date,
-                u.username as assigned_by_username
+                u.username as assigned_by_username,
+                COUNT(DISTINCT CASE WHEN uqt.completed_time IS NOT NULL THEN uqt.user_id END) as total_submissions
             FROM "Quiz_Assignment" qa
             JOIN "Quiz" q ON qa.quiz_id = q.quiz_id
             JOIN "User" u ON qa.assigned_by = u.user_id
+            LEFT JOIN "User_Quiz_Take" uqt ON q.quiz_id = uqt.quiz_id
             WHERE qa.user_id = %s
+            GROUP BY qa.quiz_assignment_id, qa.assign_date, qa.due_date, q.quiz_id, q.quiz_name, q.difficulty_level, q.total_no_questions, q.created_date, u.username
             ORDER BY qa.assign_date DESC
         """
         print(f"[MODEL] get_assigned_quizzes querying with user_id: {user_id}")
@@ -75,6 +88,39 @@ class QuizModel:
         print(f"[MODEL] get_assigned_quizzes found {len(results)} assigned quizzes")
         if results:
             print(f"[MODEL] Sample assigned quiz: {results[0]}")
+        return results
+    
+    @staticmethod
+    def get_teacher_assigned_quizzes(cursor: RealDictCursor, teacher_id: int) -> List[Dict]:
+        """Get all quizzes that a teacher has assigned to students, with submission counts
+        Groups by quiz (not by individual assignment) to show unique quizzes with total submission counts
+        """
+        query = """
+            SELECT 
+                MIN(qa.quiz_assignment_id) as quiz_assignment_id,
+                MIN(qa.assign_date) as assign_date,
+                MAX(qa.due_date) as due_date,
+                q.quiz_id,
+                q.quiz_name,
+                q.difficulty_level,
+                q.total_no_questions,
+                q.created_date,
+                COUNT(DISTINCT qa.user_id) as total_assigned,
+                COUNT(DISTINCT CASE WHEN uqt.completed_time IS NOT NULL THEN uqt.user_id END) as total_submissions
+            FROM "Quiz_Assignment" qa
+            JOIN "Quiz" q ON qa.quiz_id = q.quiz_id
+            LEFT JOIN "User_Quiz_Take" uqt ON q.quiz_id = uqt.quiz_id AND uqt.completed_time IS NOT NULL
+            WHERE qa.assigned_by = %s
+            GROUP BY q.quiz_id, q.quiz_name, q.difficulty_level, q.total_no_questions, q.created_date
+            ORDER BY MIN(qa.assign_date) DESC
+        """
+        print(f"[MODEL] get_teacher_assigned_quizzes querying with teacher_id: {teacher_id}")
+        cursor.execute(query, (teacher_id,))
+        results = [dict(row) for row in cursor.fetchall()]
+        print(f"[MODEL] get_teacher_assigned_quizzes found {len(results)} unique assigned quizzes")
+        if results:
+            print(f"[MODEL] Sample teacher assigned quiz: {results[0]}")
+            print(f"[MODEL] total_submissions type: {type(results[0].get('total_submissions'))}, value: {results[0].get('total_submissions')}")
         return results
     
     @staticmethod

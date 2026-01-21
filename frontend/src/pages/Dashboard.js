@@ -515,7 +515,11 @@ const Dashboard = () => {
     }
   };
 
-  const QuizCard = ({ quiz, onTakeTest, onViewQuiz, onDelete, onShare, showTakeButton = true, isSelected = false, onSelect = null, section = 'myQuizzes', onExportCSV = null }) => {
+  const handleViewResults = (quizId) => {
+    navigate(`/teacher/quiz/${quizId}/results`);
+  };
+
+  const QuizCard = ({ quiz, onTakeTest, onViewQuiz, onDelete, onShare, showTakeButton = true, isSelected = false, onSelect = null, section = 'myQuizzes', onExportCSV = null, onViewResults = null }) => {
     const handleCheckboxClick = (e) => {
       e.stopPropagation();
       if (onSelect) {
@@ -614,6 +618,31 @@ const Dashboard = () => {
               }}>
                 📥 Export CSV
               </button>
+            )}
+            {user?.role === 'TEACHER' && onViewResults && (
+              Number(quiz.total_submissions || 0) > 0 ? (
+                <button onClick={() => onViewResults(quiz.quiz_id)} className="view-results-btn" style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#4caf50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  ✅ View Results ({quiz.total_submissions})
+                </button>
+              ) : (
+                <span style={{
+                  fontSize: '13px',
+                  color: '#999',
+                  fontStyle: 'italic',
+                  padding: '8px 16px'
+                }}>
+                  No students attended yet
+                </span>
+              )
             )}
             {onShare && user?.role === 'TEACHER' && (
               <button onClick={(e) => { e.stopPropagation(); onShare(quiz.quiz_id); }} className="assign-share-btn" style={{
@@ -1161,22 +1190,6 @@ const Dashboard = () => {
 
           {activeTab === 'assigned' && (
             <div>
-              {user?.role === 'TEACHER' && (
-                <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
-                  <button onClick={() => handleExportCSV()} style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#4caf50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}>
-                    📥 Export All Results (CSV)
-                  </button>
-                </div>
-              )}
               {assignedQuizzes.length > 0 && (
                 <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1232,6 +1245,7 @@ const Dashboard = () => {
                       <tbody>
                         {assignedQuizzes.map((quiz, index) => {
                           console.log(`[DASHBOARD] Rendering assigned quiz ${index}:`, quiz);
+                          console.log(`[DASHBOARD] Quiz ${quiz.quiz_name} - totalSubmissions:`, quiz.total_submissions, 'Type:', typeof quiz.total_submissions);
                           return (
                             <tr key={quiz.quiz_assignment_id || `assigned-${quiz.quiz_id}-${index}`} className="quiz-table-row">
                               <td>
@@ -1260,25 +1274,61 @@ const Dashboard = () => {
                               <td>{quiz.assign_date ? formatDate(quiz.assign_date) : (quiz.created_date ? formatDate(quiz.created_date) : 'N/A')}</td>
                               <td>
                                 <div className="action-buttons">
-                                  <button 
-                                    onClick={() => handleViewQuiz(quiz.quiz_id)} 
-                                    className="action-btn view-btn-icon"
-                                    title="View Quiz"
-                                  >
-                                    👁️
-                                  </button>
-                                  <button 
-                                    onClick={() => handleTakeTest(quiz.quiz_id, quiz.quiz_assignment_id)} 
-                                    className="action-btn"
-                                    title="Take Test"
-                                    style={{
-                                      backgroundColor: '#4caf50',
-                                      color: 'white',
-                                      border: 'none'
-                                    }}
-                                  >
-                                    ✏️
-                                  </button>
+                                  {user?.role === 'STUDENT' && (
+                                    <>
+                                      <button 
+                                        onClick={() => handleViewQuiz(quiz.quiz_id)} 
+                                        className="action-btn view-btn-icon"
+                                        title="View Quiz"
+                                      >
+                                        👁️
+                                      </button>
+                                      <button 
+                                        onClick={() => handleTakeTest(quiz.quiz_id, quiz.quiz_assignment_id)} 
+                                        className="action-btn"
+                                        title="Take Test"
+                                        style={{
+                                          backgroundColor: '#4caf50',
+                                          color: 'white',
+                                          border: 'none'
+                                        }}
+                                      >
+                                        ✏️
+                                      </button>
+                                    </>
+                                  )}
+                                  {user?.role === 'TEACHER' && (
+                                    <>
+                                      {Number(quiz.total_submissions || 0) > 0 ? (
+                                        <button 
+                                          onClick={() => navigate(`/teacher/quiz/${quiz.quiz_id}/results`)} 
+                                          className="action-btn view-results-btn"
+                                          title={`View results from ${quiz.total_submissions} student${quiz.total_submissions !== 1 ? 's' : ''}`}
+                                          style={{
+                                            backgroundColor: '#4caf50',
+                                            color: 'white',
+                                            fontSize: '12px',
+                                            padding: '6px 12px',
+                                            whiteSpace: 'nowrap'
+                                          }}
+                                        >
+                                          ✅ View Results ({quiz.total_submissions})
+                                        </button>
+                                      ) : (
+                                        <span 
+                                          style={{ 
+                                            fontSize: '11px', 
+                                            color: '#999',
+                                            fontStyle: 'italic',
+                                            whiteSpace: 'nowrap'
+                                          }}
+                                          title="No students have attended this quiz yet"
+                                        >
+                                          No students attended yet
+                                        </span>
+                                      )}
+                                    </>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -1290,17 +1340,22 @@ const Dashboard = () => {
 
                   {/* Card view for mobile/tablet */}
                   <div className="quiz-grid" style={{ display: 'none' }}>
-                    {assignedQuizzes.map((quiz, index) => (
+                    {assignedQuizzes.map((quiz, index) => {
+                      console.log(`[DASHBOARD MOBILE] Assigned Quiz Card ${index} - totalSubmissions:`, quiz.total_submissions);
+                      return (
                       <QuizCard
                         key={quiz.quiz_assignment_id || `assigned-${quiz.quiz_id}-${index}`}
                         quiz={quiz}
                         onTakeTest={() => handleTakeTest(quiz.quiz_id, quiz.quiz_assignment_id)}
-                        onViewQuiz={handleViewQuiz}
+                        onViewQuiz={user?.role === 'STUDENT' ? handleViewQuiz : null}
+                        onViewResults={user?.role === 'TEACHER' ? handleViewResults : null}
                         isSelected={selectedAssigned.has(quiz.quiz_assignment_id)}
                         onSelect={handleSelectItem}
                         section="assigned"
+                        showTakeButton={user?.role === 'STUDENT'}
                       />
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}
