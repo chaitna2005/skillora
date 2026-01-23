@@ -92,8 +92,9 @@ class QuizModel:
     
     @staticmethod
     def get_teacher_assigned_quizzes(cursor: RealDictCursor, teacher_id: int) -> List[Dict]:
-        """Get all quizzes that a teacher has assigned to students, with submission counts
-        Groups by quiz (not by individual assignment) to show unique quizzes with total submission counts
+        """Get all quizzes that a teacher has assigned to students, with accurate submission counts
+        Groups by quiz (not by individual assignment) to show unique quizzes
+        Only counts submissions from students who were assigned by this teacher
         """
         query = """
             SELECT 
@@ -106,21 +107,32 @@ class QuizModel:
                 q.total_no_questions,
                 q.created_date,
                 COUNT(DISTINCT qa.user_id) as total_assigned,
-                COUNT(DISTINCT CASE WHEN uqt.completed_time IS NOT NULL THEN uqt.user_id END) as total_submissions
+                (
+                    SELECT COUNT(DISTINCT uqt.user_id)
+                    FROM "User_Quiz_Take" uqt
+                    WHERE uqt.quiz_id = q.quiz_id 
+                        AND uqt.completed_time IS NOT NULL
+                        AND uqt.user_id IN (
+                            SELECT user_id 
+                            FROM "Quiz_Assignment" 
+                            WHERE quiz_id = q.quiz_id AND assigned_by = %s
+                        )
+                ) as total_submissions
             FROM "Quiz_Assignment" qa
             JOIN "Quiz" q ON qa.quiz_id = q.quiz_id
-            LEFT JOIN "User_Quiz_Take" uqt ON q.quiz_id = uqt.quiz_id AND uqt.completed_time IS NOT NULL
             WHERE qa.assigned_by = %s
             GROUP BY q.quiz_id, q.quiz_name, q.difficulty_level, q.total_no_questions, q.created_date
             ORDER BY MIN(qa.assign_date) DESC
         """
         print(f"[MODEL] get_teacher_assigned_quizzes querying with teacher_id: {teacher_id}")
-        cursor.execute(query, (teacher_id,))
+        cursor.execute(query, (teacher_id, teacher_id))
         results = [dict(row) for row in cursor.fetchall()]
         print(f"[MODEL] get_teacher_assigned_quizzes found {len(results)} unique assigned quizzes")
         if results:
             print(f"[MODEL] Sample teacher assigned quiz: {results[0]}")
-            print(f"[MODEL] total_submissions type: {type(results[0].get('total_submissions'))}, value: {results[0].get('total_submissions')}")
+            print(f"[MODEL] total_submissions={results[0].get('total_submissions')}, total_assigned={results[0].get('total_assigned')}")
+            for i, quiz in enumerate(results[:3]):
+                print(f"[MODEL] Quiz {i+1}: '{quiz.get('quiz_name')}' - assigned_to={quiz.get('total_assigned')}, completed_by={quiz.get('total_submissions')}")
         return results
     
     @staticmethod

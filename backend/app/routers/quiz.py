@@ -228,6 +228,9 @@ def get_assigned_quizzes(user_id: int, cursor: RealDictCursor = Depends(get_db))
         print(f"[API] get_assigned_quizzes returned {len(quizzes)} teacher-assigned quizzes")
         if quizzes:
             print(f"[API] First teacher-assigned quiz sample: {quizzes[0]}")
+            # Log submission counts for debugging
+            for quiz in quizzes[:3]:
+                print(f"[API] Quiz '{quiz.get('quiz_name')}': total_assigned={quiz.get('total_assigned')}, total_submissions={quiz.get('total_submissions')}")
         return quizzes
     
     # Students get their assigned quizzes

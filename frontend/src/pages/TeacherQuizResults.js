@@ -52,9 +52,16 @@ const TeacherQuizResults = () => {
       console.log('[TeacherResults] First result sample:', quizResults[0]);
       
       if (quizResults.length > 0) {
+        const attemptedCount = quizResults.filter(r => r.attempt_status === 'COMPLETED').length;
+        const assignedCount = quizResults.length;
+        
+        console.log(`[TeacherResults] Counts - Assigned: ${assignedCount}, Attempted: ${attemptedCount}`);
+        
         setQuizInfo({
           quiz_name: quizResults[0].quiz_name,
-          total_questions: quizResults[0].total_questions
+          total_questions: quizResults[0].total_questions,
+          attempted_count: attemptedCount,
+          assigned_count: assignedCount
         });
       }
       
@@ -151,7 +158,7 @@ const TeacherQuizResults = () => {
           <div className="quiz-info">
             <h2>{quizInfo.quiz_name}</h2>
             <p className="quiz-meta">
-              {quizInfo.total_questions} questions • {results.filter(r => r.attempt_status === 'COMPLETED').length} submissions
+              {quizInfo.total_questions} question{quizInfo.total_questions !== 1 ? 's' : ''} • {quizInfo.attempted_count} submission{quizInfo.attempted_count !== 1 ? 's' : ''} • {quizInfo.assigned_count} assigned
             </p>
           </div>
         )}
@@ -159,7 +166,7 @@ const TeacherQuizResults = () => {
 
       {results.length === 0 ? (
         <div className="empty-state">
-          <p>📋 No students have attempted this quiz yet.</p>
+          <p>📋 No students have been assigned this quiz yet.</p>
         </div>
       ) : (
         <div className="results-table-wrapper">
