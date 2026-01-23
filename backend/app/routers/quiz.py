@@ -172,13 +172,30 @@ def bulk_delete_assigned_quizzes(
 ):
     """Bulk unassign specific quizzes by assignment IDs"""
     
+    print(f"[API] bulk_delete_assigned_quizzes called:")
+    print(f"  - user_id: {user_id}")
+    print(f"  - assignment_ids: {request.ids}")
+    
     if not request.ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No IDs provided"
         )
     
-    deleted_count = QuizModel.delete_assigned_quizzes_by_ids(cursor, request.ids, user_id)
+    # Check if user is a teacher
+    user = UserModel.get_user_by_id(cursor, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    is_teacher = user.get("role") == "TEACHER"
+    print(f"[API] User role: {user.get('role')}, is_teacher: {is_teacher}")
+    
+    deleted_count = QuizModel.delete_assigned_quizzes_by_ids(cursor, request.ids, user_id, is_teacher)
+    
+    print(f"[API] Successfully unassigned {deleted_count} out of {len(request.ids)} requested")
     
     return {
         "message": f"Successfully unassigned {deleted_count} quiz(zes)",

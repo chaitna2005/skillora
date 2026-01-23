@@ -386,18 +386,44 @@ class QuizModel:
         return cursor.rowcount
     
     @staticmethod
-    def delete_assigned_quizzes_by_ids(cursor: RealDictCursor, assignment_ids: List[int], user_id: int) -> int:
-        """Delete specific quiz assignments by IDs - only if they belong to user"""
+    def delete_assigned_quizzes_by_ids(cursor: RealDictCursor, assignment_ids: List[int], user_id: int, is_teacher: bool = False) -> int:
+        """Delete specific quiz assignments by IDs
+        - If is_teacher=True: Delete assignments created by this teacher (assigned_by = user_id)
+        - If is_teacher=False: Delete assignments for this student (user_id = user_id)
+        """
         if not assignment_ids:
+            print(f"[MODEL] delete_assigned_quizzes_by_ids: No assignment IDs provided")
             return 0
+        
+        print(f"[MODEL] delete_assigned_quizzes_by_ids called:")
+        print(f"  - user_id: {user_id}")
+        print(f"  - is_teacher: {is_teacher}")
+        print(f"  - assignment_ids: {assignment_ids}")
         
         # Use parameterized query with tuple for IN clause
         placeholders = ','.join(['%s'] * len(assignment_ids))
-        query = f"""
-            DELETE FROM "Quiz_Assignment"
-            WHERE quiz_assignment_id IN ({placeholders})
-                AND user_id = %s
-        """
+        
+        # Teachers delete assignments they created (assigned_by = user_id)
+        # Students delete assignments assigned to them (user_id = user_id)
+        if is_teacher:
+            query = f"""
+                DELETE FROM "Quiz_Assignment"
+                WHERE quiz_assignment_id IN ({placeholders})
+                    AND assigned_by = %s
+            """
+        else:
+            query = f"""
+                DELETE FROM "Quiz_Assignment"
+                WHERE quiz_assignment_id IN ({placeholders})
+                    AND user_id = %s
+            """
+        
+        print(f"[MODEL] Executing query: {query}")
+        print(f"[MODEL] With params: {tuple(assignment_ids) + (user_id,)}")
+        
         cursor.execute(query, tuple(assignment_ids) + (user_id,))
-        return cursor.rowcount
+        deleted = cursor.rowcount
+        
+        print(f"[MODEL] Deleted {deleted} assignment(s)")
+        return deleted
 

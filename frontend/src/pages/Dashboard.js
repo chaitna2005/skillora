@@ -367,7 +367,13 @@ const Dashboard = () => {
     
     const ids = selections[section];
     
+    console.log(`[DASHBOARD] confirmDeleteSelected called for section: ${section}`);
+    console.log(`[DASHBOARD] Selected IDs:`, ids);
+    console.log(`[DASHBOARD] User ID:`, userId);
+    console.log(`[DASHBOARD] User role:`, user?.role);
+    
     if (!ids || ids.length === 0) {
+      console.log('[DASHBOARD] No IDs selected, aborting');
       setShowConfirmModal(false);
       setConfirmAction(null);
       return;
@@ -388,12 +394,15 @@ const Dashboard = () => {
           result = await bulkDeleteQuizzes(userId, ids);
           break;
         case 'assigned':
+          console.log('[DASHBOARD] Calling bulkDeleteAssignedQuizzes with:', { userId, ids });
           result = await bulkDeleteAssignedQuizzes(userId, ids);
+          console.log('[DASHBOARD] bulkDeleteAssignedQuizzes result:', result);
           break;
         default:
           return;
       }
       
+      console.log('[DASHBOARD] Delete result:', result);
       setSuccessMessage(result.message || `Successfully deleted ${result.deleted_count || 0} item(s)`);
       setShowConfirmModal(false);
       setConfirmAction(null);
@@ -1246,6 +1255,7 @@ const Dashboard = () => {
                         {assignedQuizzes.map((quiz, index) => {
                           console.log(`[DASHBOARD] Rendering assigned quiz ${index}:`, quiz);
                           console.log(`[DASHBOARD] Quiz ${quiz.quiz_name} - totalSubmissions:`, quiz.total_submissions, 'Type:', typeof quiz.total_submissions);
+                          console.log(`[DASHBOARD] Quiz assignment_id:`, quiz.quiz_assignment_id, 'quiz_id:', quiz.quiz_id);
                           return (
                             <tr key={quiz.quiz_assignment_id || `assigned-${quiz.quiz_id}-${index}`} className="quiz-table-row">
                               <td>
