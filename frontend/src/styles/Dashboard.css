@@ -327,8 +327,9 @@ html, body {
   gap: 0.375rem; /* 6px - compact spacing */
   align-items: center;
   flex-wrap: nowrap; /* Keep in single row */
-  justify-content: flex-end; /* Align to right */
+  justify-content: center; /* Center align buttons */
   min-width: fit-content;
+  overflow: visible !important; /* Ensure buttons not clipped */
 }
 
 /* Fixed column widths for 5-column tables (My Quizzes) */
@@ -358,15 +359,16 @@ html, body {
   width: 23%;
 }
 
-/* Actions column - compact fixed width */
+/* Actions column - wider to fit View Results button */
 .quiz-table th:last-child,
 .quiz-table td:last-child {
-  width: 160px; /* Fixed width for actions */
-  min-width: 160px;
-  max-width: 160px;
+  width: 220px; /* Increased width for View Results button */
+  min-width: 220px;
+  max-width: 220px;
   white-space: nowrap; /* Prevent wrapping */
-  text-align: right; /* Align content to right */
-  padding-right: 1rem;
+  text-align: center; /* Center align content */
+  padding: 0.75rem 1rem;
+  overflow: visible !important; /* Ensure no clipping */
 }
 
 /* Feedback badge column - controlled width with wrapping */
@@ -442,6 +444,32 @@ html, body {
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
   background-color: #f8fafc; /* slate-50 */
   border-color: #94a3b8; /* slate-400 */
+}
+
+/* View Results button - modern green button for teacher actions */
+.view-results-btn {
+  background-color: #16a34a !important; /* green-600 */
+  color: white !important;
+  border: none !important;
+  border-radius: 10px !important; /* rounded-lg */
+  padding: 0.5rem 1.25rem !important; /* px-5 py-2 */
+  font-size: 14px !important;
+  font-weight: 600 !important; /* font-semibold */
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+  display: inline-block !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: none !important;
+  width: auto !important;
+}
+
+.view-results-btn:hover {
+  background-color: #15803d !important; /* green-700 */
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18) !important;
 }
 
 .view-btn-icon:hover {
@@ -1016,7 +1044,7 @@ html, body {
   .action-buttons {
     gap: 0.5rem;
     flex-wrap: nowrap; /* Keep in single row even on mobile */
-    justify-content: flex-end;
+    justify-content: center;
   }
 
   .action-btn {

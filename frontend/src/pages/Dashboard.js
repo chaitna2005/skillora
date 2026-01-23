@@ -1239,7 +1239,7 @@ const Dashboard = () => {
                           <th>Diff.</th>
                           <th>Qs</th>
                           <th>Assigned</th>
-                          <th>Actions</th>
+                          <th style={{ minWidth: '220px', width: '220px', textAlign: 'center' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1272,8 +1272,8 @@ const Dashboard = () => {
                               </td>
                               <td>📝 {quiz.total_no_questions || quiz.total_questions || 0}</td>
                               <td>{quiz.assign_date ? formatDate(quiz.assign_date) : (quiz.created_date ? formatDate(quiz.created_date) : 'N/A')}</td>
-                              <td>
-                                <div className="action-buttons">
+                              <td style={{ minWidth: '220px', width: '220px', padding: '0.75rem', textAlign: 'center' }}>
+                                <div className="action-buttons" style={{ justifyContent: 'center', overflow: 'visible' }}>
                                   {user?.role === 'STUDENT' && (
                                     <>
                                       <button 
@@ -1302,14 +1302,33 @@ const Dashboard = () => {
                                       {Number(quiz.total_submissions || 0) > 0 ? (
                                         <button 
                                           onClick={() => navigate(`/teacher/quiz/${quiz.quiz_id}/results`)} 
-                                          className="action-btn view-results-btn"
+                                          className="view-results-btn"
                                           title={`View results from ${quiz.total_submissions} student${quiz.total_submissions !== 1 ? 's' : ''}`}
                                           style={{
-                                            backgroundColor: '#4caf50',
+                                            backgroundColor: '#16a34a',
                                             color: 'white',
-                                            fontSize: '12px',
-                                            padding: '6px 12px',
-                                            whiteSpace: 'nowrap'
+                                            fontSize: '14px',
+                                            padding: '0.5rem 1.25rem',
+                                            whiteSpace: 'nowrap',
+                                            border: 'none',
+                                            borderRadius: '10px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                                            display: 'inline-block',
+                                            overflow: 'visible',
+                                            textOverflow: 'clip'
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            e.target.style.backgroundColor = '#15803d';
+                                            e.target.style.transform = 'translateY(-1px)';
+                                            e.target.style.boxShadow = '0 2px 6px rgba(0,0,0,0.18)';
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            e.target.style.backgroundColor = '#16a34a';
+                                            e.target.style.transform = 'translateY(0)';
+                                            e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
                                           }}
                                         >
                                           ✅ View Results ({quiz.total_submissions})
@@ -1317,10 +1336,12 @@ const Dashboard = () => {
                                       ) : (
                                         <span 
                                           style={{ 
-                                            fontSize: '11px', 
+                                            fontSize: '12px', 
                                             color: '#999',
                                             fontStyle: 'italic',
-                                            whiteSpace: 'nowrap'
+                                            whiteSpace: 'nowrap',
+                                            textAlign: 'center',
+                                            display: 'block'
                                           }}
                                           title="No students have attended this quiz yet"
                                         >
