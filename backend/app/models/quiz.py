@@ -254,19 +254,26 @@ class QuizModel:
                 uqt.result,
                 q.total_no_questions,
                 CASE 
-                    WHEN uqt.uqt_id IS NULL THEN 'Not Attempted'
-                    WHEN uqt.completed_time IS NULL THEN 'In Progress'
-                    ELSE 'Completed'
+                    WHEN uqt.uqt_id IS NULL THEN 'NOT_ATTEMPTED'
+                    WHEN uqt.completed_time IS NULL THEN 'IN_PROGRESS'
+                    ELSE 'COMPLETED'
                 END as attempt_status
             FROM "Quiz_Assignment" qa
             JOIN "Quiz" q ON qa.quiz_id = q.quiz_id
             JOIN "User" u ON qa.user_id = u.user_id
-            LEFT JOIN "User_Quiz_Take" uqt ON qa.quiz_assignment_id = uqt.quiz_assignment_id
+            LEFT JOIN "User_Quiz_Take" uqt ON qa.quiz_id = uqt.quiz_id AND qa.user_id = uqt.user_id AND uqt.completed_time IS NOT NULL
             WHERE qa.assigned_by = %s AND qa.user_id IS NOT NULL AND qa.user_id != qa.assigned_by
             ORDER BY qa.quiz_id, u.user_id
         """
+        print(f"[MODEL] get_assignment_results_for_teacher querying with teacher_id: {teacher_id}")
         cursor.execute(query, (teacher_id,))
-        return [dict(row) for row in cursor.fetchall()]
+        results = [dict(row) for row in cursor.fetchall()]
+        print(f"[MODEL] get_assignment_results_for_teacher found {len(results)} results")
+        if results:
+            print(f"[MODEL] Sample result: {results[0]}")
+            for i, res in enumerate(results[:3]):
+                print(f"[MODEL] Result {i}: student_id={res.get('student_id')}, uqt_id={res.get('uqt_id')}, total_correct={res.get('total_correct')}, attempt_status={res.get('attempt_status')}")
+        return results
     
     @staticmethod
     def get_quiz_analytics_for_teacher(cursor: RealDictCursor, teacher_id: int) -> List[Dict]:

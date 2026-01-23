@@ -413,6 +413,8 @@ def get_assignment_results(
     
     results = QuizModel.get_assignment_results_for_teacher(cursor, teacher_id)
     
+    print(f"[API] get_assignment_results found {len(results)} total results")
+    
     formatted_results = []
     for result in results:
         formatted_results.append({
@@ -428,6 +430,11 @@ def get_assignment_results(
             "total_questions": result["total_no_questions"],
             "attempt_status": result["attempt_status"]
         })
+    
+    if formatted_results:
+        completed_count = sum(1 for r in formatted_results if r["attempt_status"] == "COMPLETED")
+        print(f"[API] Returning {len(formatted_results)} results, {completed_count} completed")
+        print(f"[API] Sample result: {formatted_results[0]}")
     
     return formatted_results
 

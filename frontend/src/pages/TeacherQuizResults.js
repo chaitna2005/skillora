@@ -43,8 +43,13 @@ const TeacherQuizResults = () => {
 
       const allResults = await response.json();
       
+      console.log('[TeacherResults] All results from API:', allResults);
+      
       // Filter results for this specific quiz
       const quizResults = allResults.filter(r => r.quiz_id === parseInt(quizId));
+      
+      console.log(`[TeacherResults] Filtered results for quiz ${quizId}:`, quizResults);
+      console.log('[TeacherResults] First result sample:', quizResults[0]);
       
       if (quizResults.length > 0) {
         setQuizInfo({
@@ -146,7 +151,7 @@ const TeacherQuizResults = () => {
           <div className="quiz-info">
             <h2>{quizInfo.quiz_name}</h2>
             <p className="quiz-meta">
-              {quizInfo.total_questions} questions • {results.filter(r => r.completed_time).length} submissions
+              {quizInfo.total_questions} questions • {results.filter(r => r.attempt_status === 'COMPLETED').length} submissions
             </p>
           </div>
         )}
@@ -171,22 +176,31 @@ const TeacherQuizResults = () => {
             </thead>
             <tbody>
               {results.map((result, index) => {
+                console.log(`[TeacherResults] Rendering row ${index}:`, {
+                  student: result.student_name,
+                  status: result.attempt_status,
+                  total_correct: result.total_correct,
+                  total_questions: result.total_questions,
+                  completed_time: result.completed_time
+                });
+                
                 const percentage = getScorePercentage(result.total_correct, result.total_questions);
                 const performanceClass = getPerformanceClass(percentage);
                 const isCompleted = result.attempt_status === 'COMPLETED';
+                const isNotAttempted = result.attempt_status === 'NOT_ATTEMPTED';
 
                 return (
-                  <tr key={result.uqt_id || `result-${index}`} className={!isCompleted ? 'not-attempted' : ''}>
+                  <tr key={result.uqt_id || `result-${index}`} className={isNotAttempted ? 'not-attempted' : ''}>
                     <td className="student-name">
                       <strong>{result.student_name}</strong>
                     </td>
                     <td>
                       <span className={`status-badge ${isCompleted ? 'completed' : 'pending'}`}>
-                        {isCompleted ? 'Completed' : 'Not Attempted'}
+                        {isCompleted ? 'Completed' : isNotAttempted ? 'Not Attempted' : 'In Progress'}
                       </span>
                     </td>
                     <td className="score-cell">
-                      {isCompleted ? `${result.total_correct} / ${result.total_questions}` : '-'}
+                      {isCompleted ? `${result.total_correct || 0} / ${result.total_questions}` : '-'}
                     </td>
                     <td className="percentage-cell">
                       {isCompleted ? `${percentage}%` : '-'}
