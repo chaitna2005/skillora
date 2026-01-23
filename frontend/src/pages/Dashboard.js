@@ -16,8 +16,7 @@ import {
   bulkDeleteCompletedTests,
   bulkDeleteQuizzes,
   bulkDeleteAssignedQuizzes,
-  createShareLink,
-  exportQuizResultsCSV
+  createShareLink
 } from '../services/api';
 import { 
   Button, 
@@ -500,29 +499,6 @@ const Dashboard = () => {
     }
   };
 
-  const handleExportCSV = async (quizId = null) => {
-    try {
-      const userId = getUserId();
-      if (!userId) {
-        alert('User not logged in.');
-        return;
-      }
-      
-      const blob = await exportQuizResultsCSV(userId, quizId);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = quizId ? `quiz_results_${quizId}.csv` : `all_quiz_results_${userId}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      const errorMessage = error.response?.data?.detail || error.message || 'Failed to export quiz results.';
-      console.error('Error exporting CSV:', error);
-      alert(errorMessage);
-    }
-  };
 
   const handleViewResults = (quizId) => {
     navigate(`/teacher/quiz/${quizId}/results`);
@@ -613,19 +589,6 @@ const Dashboard = () => {
                 fontSize: '14px'
               }}>
                 View Quiz
-              </button>
-            )}
-            {onExportCSV && user?.role === 'TEACHER' && (
-              <button onClick={() => onExportCSV(quiz.quiz_id)} className="export-csv-btn" style={{
-                padding: '8px 16px',
-                backgroundColor: '#4caf50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}>
-                📥 Export CSV
               </button>
             )}
             {user?.role === 'TEACHER' && onViewResults && (
@@ -1135,22 +1098,13 @@ const Dashboard = () => {
                                   👁️
                                 </button>
                                 {user?.role === 'TEACHER' && (
-                                  <>
-                                    <button 
-                                      onClick={() => handleExportCSV(quiz.quiz_id)} 
-                                      className="action-btn export-btn-icon"
-                                      title="Export CSV"
-                                    >
-                                      📥
-                                    </button>
-                                    <button 
-                                      onClick={() => handleShareQuiz(quiz.quiz_id)} 
-                                      className="action-btn share-btn-icon"
-                                      title="Assign / Share"
-                                    >
-                                      🔗
-                                    </button>
-                                  </>
+                                  <button 
+                                    onClick={() => handleShareQuiz(quiz.quiz_id)} 
+                                    className="action-btn share-btn-icon"
+                                    title="Assign / Share"
+                                  >
+                                    🔗
+                                  </button>
                                 )}
                                 <button 
                                   onClick={() => handleTakeTest(quiz.quiz_id)} 
@@ -1184,7 +1138,6 @@ const Dashboard = () => {
                         onViewQuiz={handleViewQuiz}
                         onDelete={handleDeleteQuiz}
                         onShare={handleShareQuiz}
-                        onExportCSV={handleExportCSV}
                         isSelected={selectedQuizzes.has(quiz.quiz_id)}
                         onSelect={handleSelectItem}
                         section="myQuizzes"
