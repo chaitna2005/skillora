@@ -603,7 +603,7 @@ const Dashboard = () => {
                   fontSize: '14px',
                   fontWeight: '500'
                 }}>
-                  ✅ View Results ({quiz.total_submissions})
+                  ✅ View Results
                 </button>
               ) : (
                 <span style={{
@@ -1266,7 +1266,7 @@ const Dashboard = () => {
                                         <button 
                                           onClick={() => navigate(`/teacher/quiz/${quiz.quiz_id}/results`)} 
                                           className="view-results-btn"
-                                          title={`View results from ${quiz.total_submissions} student${quiz.total_submissions !== 1 ? 's' : ''}`}
+                                          title="View quiz results"
                                           style={{
                                             backgroundColor: '#16a34a',
                                             color: 'white',
@@ -1294,7 +1294,7 @@ const Dashboard = () => {
                                             e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.12)';
                                           }}
                                         >
-                                          ✅ View Results ({quiz.total_submissions})
+                                          ✅ View Results
                                         </button>
                                       ) : (
                                         <span 

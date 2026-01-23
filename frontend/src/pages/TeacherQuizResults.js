@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { exportQuizResultsCSV } from '../services/api';
 import '../styles/TeacherQuizResults.css';
 
 const TeacherQuizResults = () => {
@@ -75,23 +74,6 @@ const TeacherQuizResults = () => {
     }
   };
 
-  const handleExportCSV = async () => {
-    try {
-      const userId = user?.user_id || user?.id;
-      const blob = await exportQuizResultsCSV(userId, parseInt(quizId));
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `quiz_${quizId}_results.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export results: ' + (error.response?.data?.detail || error.message));
-    }
-  };
 
   const getScorePercentage = (correct, total) => {
     if (!total || total === 0) return 0;
@@ -147,9 +129,6 @@ const TeacherQuizResults = () => {
         <div className="header-top">
           <button onClick={() => navigate('/')} className="back-btn">
             ← Back to Dashboard
-          </button>
-          <button onClick={handleExportCSV} className="export-btn">
-            📥 Export CSV
           </button>
         </div>
         
