@@ -75,47 +75,64 @@ MATH QUESTION RULES (VERY IMPORTANT):
 9. NEVER create trick math questions with ambiguous answers.
 10. All numeric options must be mathematically valid values.
 
-🔴 MATH SIMPLIFICATION RULES (MANDATORY - STRICTLY ENFORCED):
+🔴 ABSOLUTE MATH GENERATION RULES (NON-NEGOTIABLE - STRICTLY ENFORCED):
 
 For ANY math question, you MUST follow these STRICT rules:
 
-✅ ALLOWED (SINGLE OPERATION ONLY):
-- The question must contain EXACTLY ONE arithmetic operation
+✅ POSITIVE NUMBERS ONLY (MANDATORY):
 - Use ONLY positive whole numbers from 1 to 100
-- Use ONLY one of these operations:
-  • Addition: "What is 15 + 7?"
-  • Subtraction: "What is 20 − 5?"
-  • Multiplication: "What is 6 × 4?"
-  • Division: "What is 18 ÷ 3?"
+- EVERY number in the question MUST be positive
+- The FINAL ANSWER must also be POSITIVE
+- NO negative numbers ANYWHERE (not in question, not in answer)
 
-✅ VALID QUESTION FORMAT:
-- "What is A + B?" (where A and B are positive integers 1-100)
-- "What is A − B?" (where A and B are positive integers 1-100)
-- "What is A × B?" (where A and B are positive integers 1-100)
-- "What is A ÷ B?" (where A and B are positive integers 1-100)
+✅ SINGLE OPERATION ONLY:
+- The question must contain EXACTLY ONE arithmetic operation
+- Use ONLY one of these operations:
+  • Addition: "What is 15 + 7?" → Result: 22 (positive ✓)
+  • Subtraction: "What is 20 − 5?" → Result: 15 (positive ✓)
+  • Multiplication: "What is 6 × 4?" → Result: 24 (positive ✓)
+  • Division: "What is 18 ÷ 3?" → Result: 6 (positive ✓)
+
+✅ VALID QUESTION FORMATS:
+- "What is A + B?" (where A, B are positive integers 1-100, result is positive)
+- "What is A − B?" (where A > B, both positive integers 1-100, result is POSITIVE)
+- "What is A × B?" (where A, B are positive integers 1-100, result is positive)
+- "What is A ÷ B?" (where A, B are positive integers 1-100, A divisible by B, result is positive)
+
+🔵 CRITICAL SUBTRACTION RULE:
+- For "What is A − B?": A MUST BE GREATER THAN B
+- This ensures the result is ALWAYS POSITIVE
+- Examples: "What is 20 − 5?" ✓ (result: 15), "What is 5 − 20?" ❌ (result: -15)
 
 ✅ ALLOWED EXAMPLES:
-- "What is 36 ÷ 6?"  ✓
-- "What is 12 + 8?"  ✓
-- "What is 15 × 3?"  ✓
-- "What is 50 − 12?" ✓
+- "What is 36 ÷ 6?"  ✓ (result: 6, positive)
+- "What is 12 + 8?"  ✓ (result: 20, positive)
+- "What is 15 × 3?"  ✓ (result: 45, positive)
+- "What is 50 − 12?" ✓ (result: 38, positive)
+- "What is 18 − 5?"  ✓ (result: 13, positive)
 
 ❌ ABSOLUTELY FORBIDDEN (DO NOT CREATE):
 - More than one operator: "36 ÷ 6 + 8" ❌
 - Brackets/parentheses: "(5 + 3) × 2" ❌
 - Order of operations: "8 + 5 × 2" ❌
 - Mixed operators: "10 + 5 − 3" ❌
-- Nested math: "((10 − 4) ÷ 2)" ❌
 - Chains of operations: "5 + 3 + 2" ❌
+- Negative numbers: "(-2) + 5", "-10", "What is -18 + 7?" ❌
+- Subtraction with negative result: "What is 5 − 20?" ❌ (result: -15)
+- Negative expressions: "-2 × -7", "(-3) × 4" ❌
 - Exponentiation: "5^2", "2^3" ❌
-- Negative numbers: "(-2) + 5", "-10" ❌
 - Decimals: "3.5 + 2.1", "10.5" ❌
 - Fractions: "1/2", "3/4" ❌
 - Variables: "x + 5", "2y" ❌
 - Word problems: "A train travels..." ❌
 
-11. VALIDATION RULE: If you create a math question with MORE THAN ONE OPERATION or ANY forbidden element, you MUST REGENERATE it immediately.
-12. Keep ALL math questions to simple single-step arithmetic: A [operator] B = ?
+🔁 VALIDATION BEFORE RETURN (MANDATORY):
+11. Before returning the quiz, CHECK EACH MATH QUESTION:
+    - Does it have more than one operator? → REGENERATE
+    - Does it contain negative numbers? → REGENERATE
+    - For subtraction, is A > B? → If not, REGENERATE
+    - Is the result positive? → If not, REGENERATE
+12. Keep ALL math questions to simple single-step arithmetic with POSITIVE RESULTS ONLY.
 
 SAFETY RULE:
 11. If unsure about correctness, REGENERATE the question instead of risking wrong answer.
@@ -152,13 +169,15 @@ Topic: {prompt}
 Difficulty: {difficulty_level}
 REQUIRED NUMBER OF QUESTIONS: {total_questions} (THIS IS MANDATORY - NOT {total_questions-1}, NOT {total_questions+1}, EXACTLY {total_questions})
 
-🔴 CRITICAL MATH VALIDATION:
-For math questions, use ONLY SINGLE-OPERATION expressions:
+🔴 CRITICAL MATH VALIDATION (NON-NEGOTIABLE):
+For math questions, use ONLY SINGLE-OPERATION expressions with POSITIVE RESULTS:
 - EXACTLY ONE operation per question: A + B, A − B, A × B, or A ÷ B
-- Use ONLY positive integers 1-100
+- ALL numbers MUST be POSITIVE (1-100)
+- RESULT must be POSITIVE (no negative answers)
+- For subtraction: A MUST BE GREATER THAN B (ensures positive result)
 - Format: "What is [number] [operator] [number]?"
-- ✅ ALLOWED: "What is 36 ÷ 6?", "What is 12 + 8?"
-- ❌ FORBIDDEN: "36 ÷ 6 + 8", "(5 + 3) × 2", "8 + 5 × 2", multiple operations, brackets, order of operations
+- ✅ ALLOWED: "What is 36 ÷ 6?" (=6), "What is 20 − 5?" (=15), "What is 12 + 8?" (=20)
+- ❌ FORBIDDEN: "What is 5 − 20?" (=-15), "What is -18 + 7?" (-18 is negative), "36 ÷ 6 + 8" (multiple ops), brackets, negative numbers
 
 Mix of question types:
 - 70% RADIO (single correct answer)
@@ -300,17 +319,21 @@ RULES:
     ❌ BRACKETS/PARENTHESES: "(5 + 3) × 2", "(10 − 4) ÷ 2"
     ❌ ORDER OF OPERATIONS: "8 + 5 × 2" (requires precedence rules)
     ❌ CHAINED OPERATIONS: "5 + 3 + 2", "10 − 5 − 2"
-    ❌ Negative numbers: (-2), -5, negative expressions
+    ❌ NEGATIVE NUMBERS: (-2), -5, "What is -18 + 7?", negative expressions, "What is -2 × -7?"
+    ❌ NEGATIVE RESULTS: "What is 5 − 20?" (result: -15), subtraction where A < B
     ❌ Exponents/Powers: 5^2, 2^3, 10^2
     ❌ Variables/Algebra: x, y, "Solve for x", equations
     ❌ Decimals: 3.5, 2.1, 0.75
     ❌ Fractions: 1/2, 3/4
     ❌ Word problems with hidden math
-12. Rewritten math questions MUST use ONLY SINGLE OPERATIONS:
+12. Rewritten math questions MUST use ONLY SINGLE OPERATIONS WITH POSITIVE RESULTS:
     ✅ Format: "What is A + B?" where A, B are positive integers 1-100
+    ✅ For subtraction: "What is A − B?" where A > B (ensures positive result)
     ✅ EXACTLY ONE operator: +, −, ×, or ÷
-    ✅ Valid examples: "What is 36 ÷ 6?", "What is 12 + 8?", "What is 15 × 3?"
-    ✅ NO brackets, NO multiple operations, NO order of operations complexity
+    ✅ ALL numbers must be POSITIVE (1-100)
+    ✅ RESULT must be POSITIVE
+    ✅ Valid examples: "What is 36 ÷ 6?" (=6), "What is 20 − 5?" (=15), "What is 12 + 8?" (=20)
+    ✅ NO brackets, NO multiple operations, NO negative numbers, NO negative results
 
 ABSOLUTE RULE:
 Return corrected_question that ALWAYS contains valid correct answer(s).
