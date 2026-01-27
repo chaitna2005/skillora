@@ -23,13 +23,21 @@ class QuestionModel:
     @staticmethod
     def create_question_option(cursor: RealDictCursor, option_data: Dict[str, Any]) -> Optional[Dict]:
         """Create a question option"""
+        # 🔍 DEBUG: Log the data being inserted
+        print(f"      [MODEL INSERT] Data: option_text={option_data.get('option_text', 'N/A')[:30]}, is_correct={option_data.get('is_correct')} (type: {type(option_data.get('is_correct'))})")
+        
         query = """
             INSERT INTO "QuestionOption" (question_id, option_text, is_correct)
             VALUES (%(question_id)s, %(option_text)s, %(is_correct)s)
             RETURNING question_option_id, question_id, option_text, is_correct
         """
         cursor.execute(query, option_data)
-        return dict(cursor.fetchone())
+        result = dict(cursor.fetchone())
+        
+        # 🔍 DEBUG: Log what the database returned
+        print(f"      [MODEL RETURNED] is_correct={result.get('is_correct')} (type: {type(result.get('is_correct'))})")
+        
+        return result
     
     @staticmethod
     def get_questions_by_quiz(cursor: RealDictCursor, quiz_id: int) -> List[Dict]:

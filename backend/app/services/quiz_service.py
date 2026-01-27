@@ -119,14 +119,32 @@ class QuizService:
             
             # Create options with validated is_correct flags
             for option_data in options:
-                QuestionModel.create_question_option(cursor, {
+                # 🔍 DEBUG: Log option data being saved to DB
+                is_correct_value = bool(option_data.get("is_correct", False))
+                print(f"   [DB SAVE] Option: {option_data['option_text'][:50]} | is_correct={is_correct_value} (type: {type(is_correct_value)})")
+                
+                # ✅ CRITICAL: Ensure boolean type conversion
+                created_option = QuestionModel.create_question_option(cursor, {
                     "question_id": question_id,
                     "option_text": option_data["option_text"],
-                    "is_correct": option_data["is_correct"]
+                    "is_correct": is_correct_value  # Explicitly convert to bool
                 })
+                
+                # 🔍 DEBUG: Log what was actually saved and returned from DB
+                if created_option:
+                    print(f"   [DB RETURNED] Option ID: {created_option.get('question_option_id')} | is_correct={created_option.get('is_correct')} (type: {type(created_option.get('is_correct'))})")
+        
+        # 🔍 DEBUG: Verify data immediately after save
+        print("\n[DB VERIFICATION] Reading back saved data from database...")
+        saved_quiz = QuestionModel.get_quiz_with_questions(cursor, quiz_id)
+        if saved_quiz and saved_quiz.get("questions"):
+            for q in saved_quiz["questions"]:
+                print(f"Q: {q.get('question_text', 'N/A')[:60]}")
+                for opt in q.get("options", []):
+                    print(f"   Option ID {opt.get('question_option_id')}: {opt.get('option_text', 'N/A')[:40]} | is_correct={opt.get('is_correct')} (type: {type(opt.get('is_correct'))})")
         
         # Return complete quiz with questions
-        return QuestionModel.get_quiz_with_questions(cursor, quiz_id)
+        return saved_quiz
     
     def _validate_questions(self, questions: List[Dict[str, Any]], required_count: int) -> List[Dict[str, Any]]:
         """

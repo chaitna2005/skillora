@@ -66,6 +66,8 @@ class TestService:
             normalized_text = text.replace('×', '*').replace('x', '*').replace('X', '*')
             # Normalize division symbols (÷) to /
             normalized_text = normalized_text.replace('÷', '/')
+            # Normalize Unicode minus (−) to regular minus (-)
+            normalized_text = normalized_text.replace('−', '-')
             
             # Extract math expression - allow digits, operators, parentheses, decimal points, spaces
             # Pattern: number operator number (with optional spaces)
@@ -138,6 +140,23 @@ class TestService:
     @staticmethod
     def _compute_correct_answer(question_text: str, question_type: str) -> Optional[float]:
         """Compute correct answer from question text - CRITICAL: Use Python, NOT LLM"""
+        
+        # 🔹 Skip algebra / variable-based questions (e.g., "Solve for x: 3(2x - 5) = 2(x + 7)")
+        # Only process pure arithmetic questions (no variables like x, y, z)
+        # Check for mathematical variables: single letters in equations, "solve for x", "find x", etc.
+        algebra_patterns = [
+            r'\b[a-z]\s*[=+\-*/()]',  # Single letter followed by math operators: "x =", "x +", "x -", "x(", etc.
+            r'[=+\-*/()]\s*\b[a-z]\b',  # Math operators followed by single letter: "= x", "+ y", "- z", "(x", etc.
+            r'\d+\s*[a-z]\b',  # Number followed by letter (no space): "3x", "2y", "5z"
+            r'solve\s+for\s+[a-z]',  # "solve for x"
+            r'find\s+[a-z]',  # "find x"
+            r'\b[a-z]\s*[-+]?\s*\d',  # Letter followed by number: "x - 5", "y + 3"
+        ]
+        if any(re.search(pattern, question_text.lower()) for pattern in algebra_patterns):
+            # Algebra question detected - skip arithmetic computation
+            # Rely on LLM's is_correct flags
+            return None
+        
         # Extract target value for CHECKLIST questions like "which equal 10"
         target_match = re.search(r'equal(?:s| to)?\s+(\d+(?:\.\d+)?)', question_text, re.IGNORECASE)
         if target_match:
@@ -152,6 +171,8 @@ class TestService:
         # Normalize multiplication symbols
         normalized_text = question_text.replace('×', '*').replace('x', '*').replace('X', '*')
         normalized_text = normalized_text.replace('÷', '/')
+        # Normalize Unicode minus (−) to regular minus (-)
+        normalized_text = normalized_text.replace('−', '-')
         
         # Pattern 1: "What is 3 x 3?" or "What is 3 * 3?"
         what_is_match = re.search(r'what is\s+([\d\s+\-*/()^.\s]+)', normalized_text, re.IGNORECASE)

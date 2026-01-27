@@ -923,6 +923,13 @@ def get_test_result(
     
     print(f"[DEBUG] Quiz retrieved with {len(quiz.get('questions', []))} questions")
     
+    # 🔍 DEBUG LOGGING - Verify correct flags after loading from DB
+    print("\n[DEBUG] Questions Loaded For Result:")
+    for q in quiz.get("questions", []):
+        print(f"Q: {q.get('question_text', 'N/A')}")
+        for opt in q.get("options", []):
+            print(f"   Option: {opt.get('option_text', 'N/A')} | is_correct={opt.get('is_correct', 'N/A')}")
+    
     # Step 3: Get test answers
     test_answers = TestModel.get_test_answers(cursor, uqt_id)
     print(f"[DEBUG] Retrieved {len(test_answers) if test_answers else 0} test answers")

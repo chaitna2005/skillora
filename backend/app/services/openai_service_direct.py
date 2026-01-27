@@ -54,22 +54,37 @@ class OpenAIService:
     ) -> Dict[str, Any]:
         """Generate quiz questions using direct API calls"""
         
-        system_prompt = """You are an expert quiz creator. Generate clear, educational quiz questions based on the given topic.
+        system_prompt = """You are an expert quiz creator and STRICT answer validator.
 
-Rules:
-1. Create questions that match the specified difficulty level
-2. Each question should have 4 options
-3. For RADIO type: exactly ONE correct answer
-4. For CHECKLIST type: one or MORE correct answers
-5. Questions should be unambiguous and educational
-6. Generate a short, relevant quiz title (max 5 words)
-7. Return ONLY valid JSON, no additional text
-8. Do not include any additional text or comments in the response   
-9. MAKE SURE THE QUESTIONS ARE UNIQUE AND NOT DUPLICATE
-10. MAKE SURE THE CORRECT ANSWER IS ALWAYS PROVIDED IN THE OPTIONS
-11. MAKE SURE THE QUESTIONS ARE NOT TOO LONG OR TOO SHORT
-12. DO NOT GENERATE QUIZ WITHOUT THE CORRECT ANSWER PROVIDED IN THE OPTIONS
+CRITICAL QUALITY RULES (MANDATORY):
 
+1. EVERY question MUST have at least one correct option.
+2. The correct answer MUST exist EXACTLY in the options list.
+3. NEVER create a question where the answer is missing from options.
+4. NEVER leave all options marked as false.
+5. For RADIO type → EXACTLY ONE correct answer.
+6. For CHECKLIST type → ONE OR MORE correct answers.
+
+MATH QUESTION RULES (VERY IMPORTANT):
+7. If the question involves numbers, equations, arithmetic, logic, or calculations:
+   - Solve the problem step-by-step internally.
+   - Compute the FINAL answer.
+   - Ensure that computed answer EXISTS in the options.
+   - Mark ONLY the mathematically correct option(s) as true.
+8. NEVER guess math answers.
+9. NEVER create trick math questions with ambiguous answers.
+10. All numeric options must be mathematically valid values.
+
+SAFETY RULE:
+11. If unsure about correctness, REGENERATE the question instead of risking wrong answer.
+
+CONTENT RULES:
+12. Questions must be clear and unambiguous.
+13. No duplicate questions.
+14. Keep questions medium length.
+15. Return ONLY valid JSON.
+
+You are responsible for correctness. Wrong answers are unacceptable.
 
 Response format:
 {
@@ -179,6 +194,25 @@ Generate EXACTLY {total_questions} questions now."""
             final_questions = unique_questions[:total_questions]
             print(f"[OPENAI_DIRECT] Returning exactly {len(final_questions)} unique questions")
             
+            # FINAL SAFETY LAYER — MATH OVERRIDE
+            print("[FINAL CHECK] Running math answer override...")
+            final_questions = self.evaluate_and_override_math_answers(final_questions)
+            
+            # ABSOLUTE SAFETY CHECK
+            for i, q in enumerate(final_questions):
+                correct_count = sum(1 for opt in q.get("options", []) if opt.get("is_correct", False))
+                if correct_count == 0:
+                    print(f"[CRITICAL FIX] Question {i+1} had no correct answer. Forcing first option as correct.")
+                    if q.get("options"):
+                        q["options"][0]["is_correct"] = True
+            
+            # 🔍 DEBUG LOGGING - Verify correct flags before saving
+            print("\n[DEBUG] Final Questions Before Save:")
+            for i, q in enumerate(final_questions):
+                print(f"Q{i+1}: {q['question_text']}")
+                for opt in q.get("options", []):
+                    print(f"   Option: {opt['option_text']} | is_correct={opt['is_correct']}")
+            
             return {
                 "title": title,
                 "questions": final_questions
@@ -191,24 +225,28 @@ Generate EXACTLY {total_questions} questions now."""
     def verify_and_correct_question(self, question: Dict[str, Any]) -> Dict[str, Any]:
         """Verify and correct a single question using a second LLM call"""
         
-        system_prompt = """You are a strict quality verifier for quiz questions. Your job is to verify and correct quiz questions, especially math questions.
+        system_prompt = """You are a STRICT mathematical and logical validator.
 
-CRITICAL RULES:
-1. For math questions: ALWAYS independently solve the problem step-by-step and verify the correct answer
-2. Check if the marked correct answer is ACTUALLY mathematically/logically correct
-3. Verify all options are mathematically/logically valid (no impossible values)
-4. For RADIO type: Ensure exactly ONE correct answer exists (if multiple marked, fix to one)
-5. For CHECKLIST type: Ensure ALL correct answers are marked (none missing)
-6. Fix any errors you find - correct wrong answers, fix invalid options, regenerate if needed
-7. ALWAYS return corrected_question field, even if no corrections are needed (return original)
-8. Return ONLY valid JSON, no additional text
+CRITICAL MISSION:
+You must guarantee that EVERY question has a correct answer that EXISTS in the options.
 
-MATH VERIFICATION PROCESS:
-- Read the question carefully
-- Solve the problem independently
-- Compare your answer with the marked correct answer
-- If they don't match, correct the is_correct flags
-- Verify all other options are valid
+RULES:
+
+1. ALWAYS recompute math questions independently.
+2. If the correct answer is not present in options:
+   → MODIFY one option to match the correct value.
+3. NEVER allow zero correct answers.
+4. NEVER allow multiple correct answers in RADIO questions.
+5. CHECKLIST must have ≥1 correct answers.
+6. Fix all numeric mistakes.
+7. Fix mismatched answer flags.
+8. Remove impossible numeric values.
+9. Ensure logical consistency.
+10. If question cannot be corrected → rewrite the question completely with valid options.
+
+ABSOLUTE RULE:
+Return corrected_question that ALWAYS contains valid correct answer(s).
+Returning a question with no correct answer is FORBIDDEN.
 
 Response format (ALWAYS include corrected_question):
 {
@@ -323,6 +361,18 @@ IMPORTANT: Always return the corrected_question field, even if no changes are ne
                 print(f"[ERROR] Failed to verify question {i+1}: {e}, using original")
                 verified_questions.append(question)  # Fallback to original
         
+        # FINAL SAFETY LAYER — MATH OVERRIDE AFTER VERIFICATION
+        print("[FINAL CHECK] Running math override after verification...")
+        verified_questions = self.evaluate_and_override_math_answers(verified_questions)
+        
+        # ABSOLUTE SAFETY CHECK - Ensure no question has zero correct answers
+        for i, q in enumerate(verified_questions):
+            correct_count = sum(1 for opt in q.get("options", []) if opt.get("is_correct", False))
+            if correct_count == 0:
+                print(f"[CRITICAL FIX] Question {i+1} had no correct answer after verification. Forcing first option as correct.")
+                if q.get("options"):
+                    q["options"][0]["is_correct"] = True
+        
         return verified_questions
     
     def _is_math_question(self, question_text: str) -> bool:
@@ -356,24 +406,32 @@ IMPORTANT: Always return the corrected_question field, even if no changes are ne
         if pure_number_match:
             return pure_number_match.group(1)
         
-        # Try to extract pure math expression (e.g., "3 + 4", "10", "5 * 2")
-        # Match patterns like: number operator number, or just a number
-        math_pattern = r'^([\d\s+\-*/()^.\s]+)$'
+        # Try to extract pure math expression (e.g., "3 + 4", "10", "5 * 2", "(2 + 3) × 4")
+        # Include Unicode symbols × ÷ − in pattern
+        math_pattern = r'^([\d\s+\-*/()^×÷−.\s]+)$'
         match = re.match(math_pattern, text)
         if match:
-            return match.group(1).strip()
+            expr = match.group(1).strip()
+            # 🔧 Normalize Unicode math symbols (×, ÷, and Unicode minus −)
+            expr = expr.replace('×', '*').replace('÷', '/').replace('−', '-')
+            return expr
         
         # Try to extract from text like "3 + 4 = 7" or "Answer: 10"
-        equals_match = re.search(r'=\s*([\d\s+\-*/()^.\s]+)', text)
+        equals_match = re.search(r'=\s*([\d\s+\-*/()^×÷−.\s]+)', text)
         if equals_match:
-            return equals_match.group(1).strip()
+            expr = equals_match.group(1).strip()
+            # 🔧 Normalize Unicode math symbols (×, ÷, and Unicode minus −)
+            expr = expr.replace('×', '*').replace('÷', '/').replace('−', '-')
+            return expr
         
         # Try to extract number at the end
-        number_match = re.search(r'([\d\s+\-*/()^.\s]+)$', text)
+        number_match = re.search(r'([\d\s+\-*/()^×÷−.\s]+)$', text)
         if number_match:
             expr = number_match.group(1).strip()
             # Validate it looks like math
-            if re.search(r'[\d+\-*/()^]', expr):
+            if re.search(r'[\d+\-*/()^×÷−]', expr):
+                # 🔧 Normalize Unicode math symbols (×, ÷, and Unicode minus −)
+                expr = expr.replace('×', '*').replace('÷', '/').replace('−', '-')
                 return expr
         
         return None
@@ -384,8 +442,8 @@ IMPORTANT: Always return the corrected_question field, even if no changes are ne
             # Clean the expression
             expression = expression.strip()
             
-            # Replace common math symbols
-            expression = expression.replace('×', '*').replace('÷', '/')
+            # Replace common Unicode math symbols
+            expression = expression.replace('×', '*').replace('÷', '/').replace('−', '-')
             expression = expression.replace('^', '**')
             
             # Remove any non-math characters (keep only digits, operators, parentheses, decimal point)
@@ -455,20 +513,20 @@ IMPORTANT: Always return the corrected_question field, even if no changes are ne
         if expr:
             return self._safe_eval_math(expr)
         
-        # Try to find "What is X?" pattern
-        what_is_match = re.search(r'what is\s+([\d\s+\-*/()^.\s]+)', question_text, re.IGNORECASE)
+        # Try to find "What is X?" pattern (include Unicode × ÷ − symbols)
+        what_is_match = re.search(r'what is\s+([\d\s+\-*/()^×÷−.\s]+)', question_text, re.IGNORECASE)
         if what_is_match:
             expr = what_is_match.group(1).strip()
             return self._safe_eval_math(expr)
         
-        # Try to find "Calculate X" pattern
-        calc_match = re.search(r'calculate\s+([\d\s+\-*/()^.\s]+)', question_text, re.IGNORECASE)
+        # Try to find "Calculate X" pattern (include Unicode × ÷ − symbols)
+        calc_match = re.search(r'calculate\s+([\d\s+\-*/()^×÷−.\s]+)', question_text, re.IGNORECASE)
         if calc_match:
             expr = calc_match.group(1).strip()
             return self._safe_eval_math(expr)
         
-        # Try to find "X = ?" pattern
-        equals_q_match = re.search(r'([\d\s+\-*/()^.\s]+)\s*=\s*\?', question_text, re.IGNORECASE)
+        # Try to find "X = ?" pattern (include Unicode × ÷ − symbols)
+        equals_q_match = re.search(r'([\d\s+\-*/()^×÷−.\s]+)\s*=\s*\?', question_text, re.IGNORECASE)
         if equals_q_match:
             expr = equals_q_match.group(1).strip()
             return self._safe_eval_math(expr)
@@ -481,11 +539,26 @@ IMPORTANT: Always return the corrected_question field, even if no changes are ne
         options = question.get("options", [])
         question_type = question.get("question_type", "RADIO")
         
-        # Compute the correct answer from the question
+        # 🔹 STEP 1 — Skip algebra / variable-based questions
+        # Only process pure arithmetic questions (no variables like x, y, z)
+        # Check for mathematical variables: single letters in equations, "solve for x", "find x", etc.
+        algebra_patterns = [
+            r'\b[a-z]\s*[=+\-*/()]',  # Single letter followed by math operators: "x =", "x +", "x -", "x(", etc.
+            r'[=+\-*/()]\s*\b[a-z]\b',  # Math operators followed by single letter: "= x", "+ y", "- z", "(x", etc.
+            r'\d+\s*[a-z]\b',  # Number followed by letter (no space): "3x", "2y", "5z"
+            r'solve\s+for\s+[a-z]',  # "solve for x"
+            r'find\s+[a-z]',  # "find x"
+            r'\b[a-z]\s*[-+]?\s*\d',  # Letter followed by number: "x - 5", "y + 3"
+        ]
+        if any(re.search(pattern, question_text.lower()) for pattern in algebra_patterns):
+            print(f"[MATH_EVAL] Algebra detected in '{question_text[:60]}...' — skipping arithmetic override")
+            return question
+        
+        # 🔹 STEP 2 — Compute the correct answer (arithmetic only)
         correct_answer = self._compute_question_answer(question_text)
         
         if correct_answer is None:
-            print(f"[MATH_EVAL] Could not compute answer for question, skipping override")
+            print(f"[MATH_EVAL] Could not compute arithmetic answer — skipping override")
             return question
         
         print(f"[MATH_EVAL] Computed correct answer: {correct_answer}")
