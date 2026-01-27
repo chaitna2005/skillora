@@ -184,6 +184,94 @@ class TestModel:
             })
     
     @staticmethod
+    def update_current_question_index(cursor: RealDictCursor, uqt_id: int, question_index: int) -> bool:
+        """Update the current question index for resume functionality
+        
+        Args:
+            uqt_id: Test attempt ID
+            question_index: Current question index (0-based)
+            
+        Returns:
+            True if update was successful, False otherwise
+        """
+        query = """
+            UPDATE "User_Quiz_Take"
+            SET current_question_index = %s
+            WHERE uqt_id = %s
+                AND completed_time IS NULL
+        """
+        cursor.execute(query, (question_index, uqt_id))
+        return cursor.rowcount > 0
+    
+    @staticmethod
+    def save_test_progress(cursor: RealDictCursor, uqt_id: int, question_index: int, answers: Dict[int, List[int]]) -> bool:
+        """Save complete test progress (question index + all answers)
+        
+        Args:
+            uqt_id: Test attempt ID
+            question_index: Current question index (0-based)
+            answers: Dictionary mapping question_id to list of selected option_ids
+            
+        Returns:
+            True if save was successful, False otherwise
+        """
+        # Update current question index
+        TestModel.update_current_question_index(cursor, uqt_id, question_index)
+        
+        # Save all answers
+        for question_id, option_ids in answers.items():
+            if option_ids and len(option_ids) > 0:
+                TestModel.save_answers_for_question(cursor, uqt_id, question_id, option_ids, is_correct=False)
+        
+        return True
+    
+    @staticmethod
+    def get_test_progress(cursor: RealDictCursor, uqt_id: int) -> Optional[Dict]:
+        """Get saved test progress (question index + answers)
+        
+        Returns:
+            Dictionary with:
+            - current_question_index: int
+            - answers: Dict[question_id -> [option_ids]]
+        """
+        # Get test attempt with current_question_index
+        query = """
+            SELECT uqt_id, current_question_index
+            FROM "User_Quiz_Take"
+            WHERE uqt_id = %s
+                AND completed_time IS NULL
+        """
+        cursor.execute(query, (uqt_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            return None
+        
+        # Get all saved answers
+        answers_query = """
+            SELECT question_id, question_option_id
+            FROM "Quiz_Take_Question_Answers"
+            WHERE uqt_id = %s
+            ORDER BY question_id
+        """
+        cursor.execute(answers_query, (uqt_id,))
+        answer_rows = cursor.fetchall()
+        
+        # Group answers by question_id
+        answers_dict = {}
+        for row in answer_rows:
+            q_id = row['question_id']
+            opt_id = row['question_option_id']
+            if q_id not in answers_dict:
+                answers_dict[q_id] = []
+            answers_dict[q_id].append(opt_id)
+        
+        return {
+            "current_question_index": result['current_question_index'] or 0,
+            "answers": answers_dict
+        }
+    
+    @staticmethod
     def get_quiz_take(cursor: RealDictCursor, uqt_id: int) -> Optional[Dict]:
         """Get quiz take details"""
         query = """

@@ -114,6 +114,26 @@ export const getHint = async (questionId, questionText, options) => {
   return response.data;
 };
 
+// Test Progress (Resume functionality)
+export const saveTestProgress = async (uqtId, currentQuestionIndex, answers) => {
+  const response = await api.post('/test/save-progress', {
+    uqt_id: uqtId,
+    current_question_index: currentQuestionIndex,
+    answers: answers
+  });
+  return response.data;
+};
+
+export const getTestProgress = async (uqtId) => {
+  const response = await api.get(`/test/progress/${uqtId}`);
+  return response.data;
+};
+
+export const restartTest = async (uqtId) => {
+  const response = await api.post(`/test/restart/${uqtId}`);
+  return response.data;
+};
+
 export const getUserTests = async (userId) => {
   const response = await api.get(`/test/user/${userId}`);
   return response.data;

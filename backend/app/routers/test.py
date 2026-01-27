@@ -16,7 +16,10 @@ from app.schemas.test import (
     BulkDeleteRequest,
     SaveAnswerRequest,
     HintRequest,
-    HintResponse
+    HintResponse,
+    SaveProgressRequest,
+    ProgressResponse,
+    ResumeTestResponse
 )
 from app.models.test import TestModel
 from app.models.question import QuestionModel
@@ -629,6 +632,179 @@ def save_answer(
         "uqt_id": uqt_id,
         "question_id": answer_data.question_id
     }
+
+
+@router.post("/save-progress", response_model=ProgressResponse)
+def save_test_progress(
+    progress_data: SaveProgressRequest,
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Save test progress for resume functionality (auto-save)
+    
+    Saves:
+    - Current question index
+    - All selected answers
+    
+    This endpoint is called frequently by the frontend to enable seamless test resumption.
+    """
+    print(f"[DEBUG] save_test_progress called: uqt_id={progress_data.uqt_id}, question_index={progress_data.current_question_index}")
+    
+    # Verify test exists and is not completed
+    quiz_take = TestModel.get_quiz_take(cursor, progress_data.uqt_id)
+    
+    if not quiz_take:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test not found"
+        )
+    
+    # Check if already completed
+    if quiz_take.get("completed_time"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot save progress for completed test"
+        )
+    
+    # Convert answers dict (string keys) to int keys
+    answers_dict = {}
+    for q_id_str, option_ids in progress_data.answers.items():
+        try:
+            q_id = int(q_id_str)
+            answers_dict[q_id] = [int(opt_id) for opt_id in option_ids]
+        except (ValueError, TypeError):
+            continue  # Skip invalid entries
+    
+    # Save progress
+    try:
+        success = TestModel.save_test_progress(
+            cursor,
+            progress_data.uqt_id,
+            progress_data.current_question_index,
+            answers_dict
+        )
+        
+        if success:
+            print(f"[DEBUG] Progress saved successfully for uqt_id={progress_data.uqt_id}")
+            return ProgressResponse(
+                success=True,
+                message="Progress saved successfully",
+                current_question_index=progress_data.current_question_index,
+                answers=progress_data.answers
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to save progress"
+            )
+    except Exception as e:
+        print(f"[ERROR] Failed to save progress: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save progress: {str(e)}"
+        )
+
+
+@router.get("/progress/{uqt_id}", response_model=ProgressResponse)
+def get_test_progress(
+    uqt_id: int,
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Get saved test progress for resume functionality
+    
+    Returns:
+    - Current question index
+    - All saved answers
+    """
+    print(f"[DEBUG] get_test_progress called: uqt_id={uqt_id}")
+    
+    # Verify test exists
+    quiz_take = TestModel.get_quiz_take(cursor, uqt_id)
+    
+    if not quiz_take:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test not found"
+        )
+    
+    # Get progress
+    progress = TestModel.get_test_progress(cursor, uqt_id)
+    
+    if not progress:
+        # No progress saved yet - return defaults
+        return ProgressResponse(
+            success=True,
+            message="No progress saved yet",
+            current_question_index=0,
+            answers={}
+        )
+    
+    # Convert answers to string keys for JSON
+    answers_dict = {}
+    for q_id, option_ids in progress.get("answers", {}).items():
+        answers_dict[str(q_id)] = option_ids
+    
+    return ProgressResponse(
+        success=True,
+        message="Progress retrieved successfully",
+        current_question_index=progress.get("current_question_index", 0),
+        answers=answers_dict
+    )
+
+
+@router.post("/restart/{uqt_id}")
+def restart_test(
+    uqt_id: int,
+    cursor: RealDictCursor = Depends(get_db)
+):
+    """Restart a test by clearing all progress
+    
+    Resets:
+    - Current question index to 0
+    - Deletes all saved answers
+    - Keeps the same uqt_id (same attempt)
+    """
+    print(f"[DEBUG] restart_test called: uqt_id={uqt_id}")
+    
+    # Verify test exists and is not completed
+    quiz_take = TestModel.get_quiz_take(cursor, uqt_id)
+    
+    if not quiz_take:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test not found"
+        )
+    
+    # Check if already completed
+    if quiz_take.get("completed_time"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot restart completed test"
+        )
+    
+    try:
+        # Reset question index to 0
+        TestModel.update_current_question_index(cursor, uqt_id, 0)
+        
+        # Delete all saved answers for this attempt
+        delete_query = """
+            DELETE FROM "Quiz_Take_Question_Answers"
+            WHERE uqt_id = %s
+        """
+        cursor.execute(delete_query, (uqt_id,))
+        
+        print(f"[DEBUG] Test restarted successfully: uqt_id={uqt_id}")
+        
+        return {
+            "success": True,
+            "message": "Test restarted successfully",
+            "uqt_id": uqt_id
+        }
+    except Exception as e:
+        print(f"[ERROR] Failed to restart test: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to restart test: {str(e)}"
+        )
 
 
 @router.post("/hint/{question_id}", response_model=HintResponse)

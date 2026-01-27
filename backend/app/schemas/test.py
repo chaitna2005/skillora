@@ -87,3 +87,28 @@ class HintResponse(BaseModel):
     hint: str
     question_id: int
 
+
+class SaveProgressRequest(BaseModel):
+    """Request to save test progress for resume functionality"""
+    uqt_id: int
+    current_question_index: int
+    answers: dict  # Dict[question_id: List[option_ids]]
+
+
+class ProgressResponse(BaseModel):
+    """Response with saved progress data"""
+    success: bool
+    message: str
+    current_question_index: Optional[int] = 0
+    answers: Optional[dict] = {}
+
+
+class ResumeTestResponse(BaseModel):
+    """Response for resuming a test"""
+    uqt_id: int
+    quiz_id: int
+    user_id: int
+    has_progress: bool
+    current_question_index: int
+    answers: dict  # Dict[question_id: List[option_ids]]
+    status: str

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getQuiz, startTest, submitTest as submitTestAPI, getTestAnswers, saveAnswer, getHint } from '../services/api';
+import { getQuiz, startTest, submitTest as submitTestAPI, getTestAnswers, saveAnswer, getHint, saveTestProgress, getTestProgress, restartTest } from '../services/api';
+import ResumeTestModal from '../components/ui/ResumeTestModal';
 import '../styles/TakeTest.css';
 
 const TakeTest = () => {
@@ -24,6 +25,8 @@ const TakeTest = () => {
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [unansweredCount, setUnansweredCount] = useState(0);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [savedProgress, setSavedProgress] = useState(null);
 
   // Format difficulty label for display (short form)
   const formatDifficultyLabel = (difficulty) => {
@@ -45,30 +48,37 @@ const TakeTest = () => {
     loadQuiz();
   }, [quizId]);
 
-  // Auto-save answers when they change (with debounce)
+  // ✅ Enhanced Auto-save: Save progress (question index + all answers) when they change
   useEffect(() => {
-    if (!uqtId || !quiz || Object.keys(answers).length === 0) {
+    if (!uqtId || !quiz || Object.keys(answers).length === 0 || showResumeModal) {
       return;
     }
 
-    // Debounce: save answers 1 second after user stops changing them
+    // Debounce: save progress 1 second after user stops changing answers
     const timeoutId = setTimeout(() => {
-      // Save current question's answer automatically
-      const currentQuestion = quiz.questions[currentQuestionIndex];
-      if (currentQuestion) {
-        const currentAnswers = answers[currentQuestion.question_id] || [];
-        if (currentAnswers.length > 0) {
-          saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)))
-            .catch(err => {
-              // Silently fail - answers will be saved on navigation or submit
-              console.error('Auto-save failed:', err);
-            });
-        }
-      }
+      console.log(`[AUTO-SAVE] Saving progress: question ${currentQuestionIndex}, uqt_id=${uqtId}`);
+      
+      // Save complete progress (question index + all answers)
+      saveTestProgress(uqtId, currentQuestionIndex, answers)
+        .then(() => {
+          console.log('[AUTO-SAVE] Progress saved successfully');
+        })
+        .catch(err => {
+          console.error('[AUTO-SAVE] Failed to save progress:', err);
+          // Fallback: try to save just the current answer
+          const currentQuestion = quiz.questions[currentQuestionIndex];
+          if (currentQuestion) {
+            const currentAnswers = answers[currentQuestion.question_id] || [];
+            if (currentAnswers.length > 0) {
+              saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)))
+                .catch(err2 => console.error('[AUTO-SAVE] Fallback save failed:', err2));
+            }
+          }
+        });
     }, 1000); // 1 second debounce
 
     return () => clearTimeout(timeoutId);
-  }, [answers, uqtId, quiz, currentQuestionIndex]);
+  }, [answers, currentQuestionIndex, uqtId, quiz, showResumeModal]);
 
   // Save answers when component unmounts (user navigates away)
   useEffect(() => {
@@ -136,6 +146,35 @@ const TakeTest = () => {
         initialAnswers[q.question_id] = [];
       });
       
+      // ✅ NEW: Check for saved progress for resume functionality
+      try {
+        const progressData = await getTestProgress(testData.uqt_id);
+        
+        if (progressData && progressData.success) {
+          const hasAnswers = progressData.answers && Object.keys(progressData.answers).length > 0;
+          const questionIndex = progressData.current_question_index || 0;
+          
+          // If there's saved progress (answers or non-zero index), show resume modal
+          if (hasAnswers || questionIndex > 0) {
+            console.log(`[RESUME] Found saved progress at question ${questionIndex}`);
+            setSavedProgress({
+              current_question_index: questionIndex,
+              answers: progressData.answers || {}
+            });
+            setShowResumeModal(true);
+            
+            // Don't auto-load progress yet - wait for user choice
+            setAnswers(initialAnswers);
+            setLoading(false);
+            return; // Exit early - user will choose resume or restart
+          }
+        }
+      } catch (err) {
+        console.log('[RESUME] No saved progress found, starting fresh');
+        // No saved progress - continue normally
+      }
+      
+      // No saved progress OR old behavior - load normally
       // CRITICAL: Load existing answers ONLY when coming from Pending Tests (assignmentId exists)
       // My Quizzes (assignmentId is NULL) must NEVER load existing answers - always start fresh
       // This enforces strict separation: My Quizzes = START, Pending Tests = CONTINUE
@@ -383,6 +422,72 @@ const TakeTest = () => {
     setShowSubmitModal(false);
   };
 
+  // ✅ Resume Test: Load saved progress and continue
+  const handleResumeTest = () => {
+    if (savedProgress) {
+      console.log('[RESUME] Resuming test from saved progress');
+      
+      // Load saved answers
+      const loadedAnswers = {};
+      quiz.questions.forEach(q => {
+        loadedAnswers[q.question_id] = [];
+      });
+      
+      // Merge saved answers
+      Object.keys(savedProgress.answers).forEach(questionId => {
+        const questionIdInt = parseInt(questionId);
+        if (savedProgress.answers[questionId] && savedProgress.answers[questionId].length > 0) {
+          loadedAnswers[questionIdInt] = savedProgress.answers[questionId].map(id => parseInt(id));
+        }
+      });
+      
+      setAnswers(loadedAnswers);
+      setCurrentQuestionIndex(savedProgress.current_question_index || 0);
+    }
+    
+    setShowResumeModal(false);
+    setLoading(false);
+  };
+
+  // ✅ Restart Test: Clear all progress and start from question 1
+  const handleRestartTest = async () => {
+    console.log('[RESTART] Restarting test from beginning');
+    
+    try {
+      // Call API to clear progress
+      await restartTest(uqtId);
+      
+      // Reset frontend state
+      const initialAnswers = {};
+      quiz.questions.forEach(q => {
+        initialAnswers[q.question_id] = [];
+      });
+      
+      setAnswers(initialAnswers);
+      setCurrentQuestionIndex(0);
+      setSavedProgress(null);
+      
+      console.log('[RESTART] Test restarted successfully');
+    } catch (err) {
+      console.error('[RESTART] Failed to restart test:', err);
+      // Continue anyway - at least reset frontend state
+      const initialAnswers = {};
+      quiz.questions.forEach(q => {
+        initialAnswers[q.question_id] = [];
+      });
+      setAnswers(initialAnswers);
+      setCurrentQuestionIndex(0);
+    }
+    
+    setShowResumeModal(false);
+    setLoading(false);
+  };
+
+  const handleCancelResume = () => {
+    // User cancelled - exit back to dashboard
+    navigate('/');
+  };
+
   // Handle ESC key press to close modal
   useEffect(() => {
     const handleEscape = (e) => {
@@ -469,6 +574,16 @@ const TakeTest = () => {
 
   return (
     <div className="take-test-container">
+      {/* ✅ Resume Test Modal */}
+      <ResumeTestModal
+        open={showResumeModal}
+        onResume={handleResumeTest}
+        onRestart={handleRestartTest}
+        onCancel={handleCancelResume}
+        questionIndex={savedProgress?.current_question_index || 0}
+        totalQuestions={quiz?.questions?.length || 0}
+      />
+
       {/* Submit Error Toast */}
       {submitError && (
         <div className="error-toast">
