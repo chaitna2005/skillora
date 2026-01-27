@@ -98,6 +98,7 @@ class TestService:
             # Clean the expression - keep only safe math characters
             safe_text = re.sub(r'[^\d+\-*/()^.\s]', '', normalized_text)
             safe_text = safe_text.replace('^', '**')  # Exponentiation
+            safe_text = safe_text.replace(' ', '')  # Remove spaces
             
             if safe_text and re.search(r'[\d+\-*/()^]', safe_text):
                 safe_dict = {
@@ -220,7 +221,8 @@ class TestService:
         # Fallback: Try general expression evaluation
         try:
             safe_expr = re.sub(r'[^\d+\-*/()^.\s]', '', normalized_text)
-            safe_expr = safe_expr.replace('^', '**')
+            safe_expr = safe_expr.replace('^', '**')  # Exponentiation
+            safe_expr = safe_expr.replace(' ', '')  # Remove spaces
             if safe_expr and re.search(r'[\d+\-*/()^]', safe_expr):
                 safe_dict = {
                     "__builtins__": {},

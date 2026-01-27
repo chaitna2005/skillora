@@ -442,13 +442,17 @@ IMPORTANT: Always return the corrected_question field, even if no changes are ne
             # Clean the expression
             expression = expression.strip()
             
-            # Replace common Unicode math symbols
+            # Normalize Unicode math symbols
             expression = expression.replace('×', '*').replace('÷', '/').replace('−', '-')
+            
+            # Convert exponent symbol to Python power operator
             expression = expression.replace('^', '**')
             
+            # Remove spaces for cleaner evaluation
+            expression = expression.replace(' ', '')
+            
             # Remove any non-math characters (keep only digits, operators, parentheses, decimal point)
-            expression = re.sub(r'[^\d+\-*/()^.\s]', '', expression)
-            expression = expression.strip()
+            expression = re.sub(r'[^\d+\-*/.()]', '', expression)
             
             if not expression:
                 return None
