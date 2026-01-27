@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getQuiz, startTest, submitTest as submitTestAPI, getTestAnswers, saveAnswer, getHint, saveTestProgress, getTestProgress, restartTest } from '../services/api';
+import { getQuiz, startTest, submitTest as submitTestAPI, getTestAnswers, saveAnswer, saveTestProgress, getTestProgress, restartTest } from '../services/api';
 import ResumeTestModal from '../components/ui/ResumeTestModal';
 import '../styles/TakeTest.css';
 
@@ -16,8 +16,6 @@ const TakeTest = () => {
   const [uqtId, setUqtId] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [hints, setHints] = useState({}); // Store hints per question_id
-  const [loadingHint, setLoadingHint] = useState({}); // Track loading state per question
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -41,8 +39,6 @@ const TakeTest = () => {
     setUqtId(null);
     setCurrentQuestionIndex(0);
     setAnswers({});
-    setHints({});
-    setLoadingHint({});
     setError('');
     setSubmitting(false);
     loadQuiz();
@@ -233,34 +229,6 @@ const TakeTest = () => {
         ...prev,
         [questionId]: [optionId]
       }));
-    }
-  };
-
-  const handleGetHint = async (questionId, questionText, options) => {
-    // If hint already exists, don't fetch again
-    if (hints[questionId]) {
-      return;
-    }
-
-    try {
-      setLoadingHint(prev => ({ ...prev, [questionId]: true }));
-      
-      const optionTexts = options.map(opt => opt.option_text);
-      const hintData = await getHint(questionId, questionText, optionTexts);
-      
-      setHints(prev => ({
-        ...prev,
-        [questionId]: hintData.hint
-      }));
-    } catch (err) {
-      console.error('Failed to get hint:', err);
-      // Set a fallback hint if API fails
-      setHints(prev => ({
-        ...prev,
-        [questionId]: 'Think carefully about the key concepts related to this question. Consider what you know about the topic and how it applies here.'
-      }));
-    } finally {
-      setLoadingHint(prev => ({ ...prev, [questionId]: false }));
     }
   };
 
@@ -655,62 +623,6 @@ const TakeTest = () => {
         </div>
         
         <p className="question-text">{currentQuestion.question_text}</p>
-
-        <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            onClick={() => handleGetHint(
-              currentQuestion.question_id,
-              currentQuestion.question_text,
-              currentQuestion.options
-            )}
-            disabled={loadingHint[currentQuestion.question_id] || !!hints[currentQuestion.question_id]}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: hints[currentQuestion.question_id] ? '#e0e0e0' : '#6C63FF',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: loadingHint[currentQuestion.question_id] || hints[currentQuestion.question_id] ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              opacity: loadingHint[currentQuestion.question_id] || hints[currentQuestion.question_id] ? 0.7 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            {loadingHint[currentQuestion.question_id] ? (
-              <>⏳ Loading...</>
-            ) : hints[currentQuestion.question_id] ? (
-              <>💡 Hint Used</>
-            ) : (
-              <>💡 Hint</>
-            )}
-          </button>
-          {hints[currentQuestion.question_id] && (
-            <span style={{ fontSize: '12px', color: '#6B7280', fontStyle: 'italic' }}>
-              Hint displayed below
-            </span>
-          )}
-        </div>
-
-        {hints[currentQuestion.question_id] && (
-          <div style={{
-            marginBottom: '20px',
-            padding: '12px 16px',
-            backgroundColor: '#F6F8FF',
-            border: '1px solid #E0E5FF',
-            borderRadius: '8px',
-            borderLeft: '4px solid #A78BFA'
-          }}>
-            <div style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '6px' }}>
-              💡 Hint:
-            </div>
-            <p style={{ margin: 0, fontSize: '14px', color: '#1F2937', lineHeight: '1.6' }}>
-              {hints[currentQuestion.question_id]}
-            </p>
-          </div>
-        )}
 
         <div className="options-container">
           {currentQuestion.options.map((option, index) => (
