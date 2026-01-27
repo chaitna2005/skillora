@@ -75,6 +75,48 @@ MATH QUESTION RULES (VERY IMPORTANT):
 9. NEVER create trick math questions with ambiguous answers.
 10. All numeric options must be mathematically valid values.
 
+🔴 MATH SIMPLIFICATION RULES (MANDATORY - STRICTLY ENFORCED):
+
+For ANY math question, you MUST follow these STRICT rules:
+
+✅ ALLOWED (SINGLE OPERATION ONLY):
+- The question must contain EXACTLY ONE arithmetic operation
+- Use ONLY positive whole numbers from 1 to 100
+- Use ONLY one of these operations:
+  • Addition: "What is 15 + 7?"
+  • Subtraction: "What is 20 − 5?"
+  • Multiplication: "What is 6 × 4?"
+  • Division: "What is 18 ÷ 3?"
+
+✅ VALID QUESTION FORMAT:
+- "What is A + B?" (where A and B are positive integers 1-100)
+- "What is A − B?" (where A and B are positive integers 1-100)
+- "What is A × B?" (where A and B are positive integers 1-100)
+- "What is A ÷ B?" (where A and B are positive integers 1-100)
+
+✅ ALLOWED EXAMPLES:
+- "What is 36 ÷ 6?"  ✓
+- "What is 12 + 8?"  ✓
+- "What is 15 × 3?"  ✓
+- "What is 50 − 12?" ✓
+
+❌ ABSOLUTELY FORBIDDEN (DO NOT CREATE):
+- More than one operator: "36 ÷ 6 + 8" ❌
+- Brackets/parentheses: "(5 + 3) × 2" ❌
+- Order of operations: "8 + 5 × 2" ❌
+- Mixed operators: "10 + 5 − 3" ❌
+- Nested math: "((10 − 4) ÷ 2)" ❌
+- Chains of operations: "5 + 3 + 2" ❌
+- Exponentiation: "5^2", "2^3" ❌
+- Negative numbers: "(-2) + 5", "-10" ❌
+- Decimals: "3.5 + 2.1", "10.5" ❌
+- Fractions: "1/2", "3/4" ❌
+- Variables: "x + 5", "2y" ❌
+- Word problems: "A train travels..." ❌
+
+11. VALIDATION RULE: If you create a math question with MORE THAN ONE OPERATION or ANY forbidden element, you MUST REGENERATE it immediately.
+12. Keep ALL math questions to simple single-step arithmetic: A [operator] B = ?
+
 SAFETY RULE:
 11. If unsure about correctness, REGENERATE the question instead of risking wrong answer.
 
@@ -109,6 +151,14 @@ Response format:
 Topic: {prompt}
 Difficulty: {difficulty_level}
 REQUIRED NUMBER OF QUESTIONS: {total_questions} (THIS IS MANDATORY - NOT {total_questions-1}, NOT {total_questions+1}, EXACTLY {total_questions})
+
+🔴 CRITICAL MATH VALIDATION:
+For math questions, use ONLY SINGLE-OPERATION expressions:
+- EXACTLY ONE operation per question: A + B, A − B, A × B, or A ÷ B
+- Use ONLY positive integers 1-100
+- Format: "What is [number] [operator] [number]?"
+- ✅ ALLOWED: "What is 36 ÷ 6?", "What is 12 + 8?"
+- ❌ FORBIDDEN: "36 ÷ 6 + 8", "(5 + 3) × 2", "8 + 5 × 2", multiple operations, brackets, order of operations
 
 Mix of question types:
 - 70% RADIO (single correct answer)
@@ -243,6 +293,24 @@ RULES:
 8. Remove impossible numeric values.
 9. Ensure logical consistency.
 10. If question cannot be corrected → rewrite the question completely with valid options.
+
+🔴 MATH QUESTION VALIDATION (MANDATORY - STRICTLY ENFORCED):
+11. If the question contains ANY of these forbidden elements, you MUST rewrite it completely:
+    ❌ MORE THAN ONE OPERATION: "36 ÷ 6 + 8", "8 + 5 × 2", "10 + 5 − 3"
+    ❌ BRACKETS/PARENTHESES: "(5 + 3) × 2", "(10 − 4) ÷ 2"
+    ❌ ORDER OF OPERATIONS: "8 + 5 × 2" (requires precedence rules)
+    ❌ CHAINED OPERATIONS: "5 + 3 + 2", "10 − 5 − 2"
+    ❌ Negative numbers: (-2), -5, negative expressions
+    ❌ Exponents/Powers: 5^2, 2^3, 10^2
+    ❌ Variables/Algebra: x, y, "Solve for x", equations
+    ❌ Decimals: 3.5, 2.1, 0.75
+    ❌ Fractions: 1/2, 3/4
+    ❌ Word problems with hidden math
+12. Rewritten math questions MUST use ONLY SINGLE OPERATIONS:
+    ✅ Format: "What is A + B?" where A, B are positive integers 1-100
+    ✅ EXACTLY ONE operator: +, −, ×, or ÷
+    ✅ Valid examples: "What is 36 ÷ 6?", "What is 12 + 8?", "What is 15 × 3?"
+    ✅ NO brackets, NO multiple operations, NO order of operations complexity
 
 ABSOLUTE RULE:
 Return corrected_question that ALWAYS contains valid correct answer(s).
