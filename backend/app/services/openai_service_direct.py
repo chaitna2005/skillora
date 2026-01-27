@@ -54,29 +54,36 @@ class OpenAIService:
     ) -> Dict[str, Any]:
         """Generate quiz questions using direct API calls"""
         
-        system_prompt = """You are an expert quiz creator and answer validator.
-
-Your job is to generate clear, educational, and fully correct quiz questions.
+       system_prompt = """You are an expert quiz creator and answer validator. Generate clear, educational, and fully correct quiz questions based on the given topic.
 
 RULES:
 
 1. Create questions that match the specified difficulty level.
 2. Each question MUST have exactly 4 options.
-3. RADIO type → EXACTLY ONE correct answer.
-4. CHECKLIST type → ONE OR MORE correct answers.
+3. For RADIO type: EXACTLY ONE correct answer.
+4. For CHECKLIST type: ONE OR MORE correct answers.
 5. Questions must be clear, medium-length, and unambiguous.
 6. Generate a short, relevant quiz title (max 5 words).
-7. Return ONLY valid JSON — no explanations or extra text.
-8. All questions must be UNIQUE (no duplicates).
-9. The correct answer MUST always exist in the options list.
-10. NEVER create a question where all options are incorrect.
-11. Ensure the correct option(s) are factually or logically accurate.
-12. If unsure about correctness, regenerate the question instead of guessing.
+7. Return ONLY valid JSON, no explanations or extra text.
+8. Do not include comments or formatting outside JSON.
+9. ALL questions must be UNIQUE (no duplicates).
+10. The correct answer MUST always exist EXACTLY in the options list.
+11. NEVER create a question where all options are incorrect.
+12. Ensure the correct option(s) are factually, logically, or mathematically accurate.
+13. If unsure about correctness, REGENERATE the question instead of guessing.
+14. Avoid ambiguous wording or trick questions.
+15. Options must be clearly distinct from one another.
 
 FOR MATH OR NUMERIC QUESTIONS:
 • Ensure the problem can be clearly calculated.
-• Avoid ambiguous or trick expressions.
+• Compute the answer carefully before assigning correctness.
 • Make sure the computed answer appears exactly in the options.
+
+FOR FILM, HISTORY, SCIENCE, GEOGRAPHY, OR FACTUAL QUESTIONS:
+• Verify facts carefully before marking answers correct.
+• Do NOT assume correctness.
+• Ensure the marked correct answer is accurate in the real world.
+• Only mark an option correct if it is accurate in the real world.
 
 You are responsible for correctness. Incorrect questions are not allowed.
 
@@ -97,6 +104,7 @@ Response format:
     ]
 }
 """
+
         
         user_prompt = f"""CRITICAL REQUIREMENT: Generate EXACTLY {total_questions} quiz questions.
 
@@ -208,15 +216,16 @@ Guarantee that every question has a correct answer that EXISTS in the options.
 RULES:
 
 1. Recompute math questions independently if numbers are involved.
-2. If the correct answer is not present in the options:
+2. For film, history, science, geography, or other factual knowledge questions — verify facts carefully before marking answers. Do not assume correctness. Ensure the marked correct answer is factually accurate in the real world.
+3. If the correct answer is not present in the options:
    → Modify one option to match the correct value.
-3. Never allow zero correct answers.
-4. RADIO questions → exactly one correct answer.
-5. CHECKLIST questions → at least one correct answer.
-6. Fix numeric or logical mistakes.
-7. Fix mismatched answer flags.
-8. Ensure consistency between question and options.
-9. If the question is broken beyond repair, rewrite it fully with valid options.
+4. Never allow zero correct answers.
+5. RADIO questions → exactly one correct answer.
+6. CHECKLIST questions → at least one correct answer.
+7. Fix numeric or logical mistakes.
+8. Fix mismatched answer flags.
+9. Ensure consistency between question and options.
+10. If the question is broken beyond repair, rewrite it fully with valid options.
 
 Return corrected_question ALWAYS.
 
