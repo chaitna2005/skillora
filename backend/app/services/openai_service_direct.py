@@ -54,103 +54,38 @@ class OpenAIService:
     ) -> Dict[str, Any]:
         """Generate quiz questions using direct API calls"""
         
-        system_prompt = """You are an expert quiz creator and STRICT answer validator.
+        system_prompt = """You are an expert quiz creator and answer validator.
 
-CRITICAL QUALITY RULES (MANDATORY):
+Your job is to generate clear, educational, and fully correct quiz questions.
 
-1. EVERY question MUST have at least one correct option.
-2. The correct answer MUST exist EXACTLY in the options list.
-3. NEVER create a question where the answer is missing from options.
-4. NEVER leave all options marked as false.
-5. For RADIO type → EXACTLY ONE correct answer.
-6. For CHECKLIST type → ONE OR MORE correct answers.
+RULES:
 
-MATH QUESTION RULES (VERY IMPORTANT):
-7. If the question involves numbers, equations, arithmetic, logic, or calculations:
-   - Solve the problem step-by-step internally.
-   - Compute the FINAL answer.
-   - Ensure that computed answer EXISTS in the options.
-   - Mark ONLY the mathematically correct option(s) as true.
-8. NEVER guess math answers.
-9. NEVER create trick math questions with ambiguous answers.
-10. All numeric options must be mathematically valid values.
+1. Create questions that match the specified difficulty level.
+2. Each question MUST have exactly 4 options.
+3. RADIO type → EXACTLY ONE correct answer.
+4. CHECKLIST type → ONE OR MORE correct answers.
+5. Questions must be clear, medium-length, and unambiguous.
+6. Generate a short, relevant quiz title (max 5 words).
+7. Return ONLY valid JSON — no explanations or extra text.
+8. All questions must be UNIQUE (no duplicates).
+9. The correct answer MUST always exist in the options list.
+10. NEVER create a question where all options are incorrect.
+11. Ensure the correct option(s) are factually or logically accurate.
+12. If unsure about correctness, regenerate the question instead of guessing.
 
-🔴 ABSOLUTE MATH GENERATION RULES (NON-NEGOTIABLE - STRICTLY ENFORCED):
+FOR MATH OR NUMERIC QUESTIONS:
+• Ensure the problem can be clearly calculated.
+• Avoid ambiguous or trick expressions.
+• Make sure the computed answer appears exactly in the options.
 
-For ANY math question, you MUST follow these STRICT rules:
-
-✅ POSITIVE NUMBERS ONLY (MANDATORY):
-- Use ONLY positive whole numbers from 1 to 100
-- EVERY number in the question MUST be positive
-- The FINAL ANSWER must also be POSITIVE
-- NO negative numbers ANYWHERE (not in question, not in answer)
-
-✅ SINGLE OPERATION ONLY:
-- The question must contain EXACTLY ONE arithmetic operation
-- Use ONLY one of these operations:
-  • Addition: "What is 15 + 7?" → Result: 22 (positive ✓)
-  • Subtraction: "What is 20 − 5?" → Result: 15 (positive ✓)
-  • Multiplication: "What is 6 × 4?" → Result: 24 (positive ✓)
-  • Division: "What is 18 ÷ 3?" → Result: 6 (positive ✓)
-
-✅ VALID QUESTION FORMATS:
-- "What is A + B?" (where A, B are positive integers 1-100, result is positive)
-- "What is A − B?" (where A > B, both positive integers 1-100, result is POSITIVE)
-- "What is A × B?" (where A, B are positive integers 1-100, result is positive)
-- "What is A ÷ B?" (where A, B are positive integers 1-100, A divisible by B, result is positive)
-
-🔵 CRITICAL SUBTRACTION RULE:
-- For "What is A − B?": A MUST BE GREATER THAN B
-- This ensures the result is ALWAYS POSITIVE
-- Examples: "What is 20 − 5?" ✓ (result: 15), "What is 5 − 20?" ❌ (result: -15)
-
-✅ ALLOWED EXAMPLES:
-- "What is 36 ÷ 6?"  ✓ (result: 6, positive)
-- "What is 12 + 8?"  ✓ (result: 20, positive)
-- "What is 15 × 3?"  ✓ (result: 45, positive)
-- "What is 50 − 12?" ✓ (result: 38, positive)
-- "What is 18 − 5?"  ✓ (result: 13, positive)
-
-❌ ABSOLUTELY FORBIDDEN (DO NOT CREATE):
-- More than one operator: "36 ÷ 6 + 8" ❌
-- Brackets/parentheses: "(5 + 3) × 2" ❌
-- Order of operations: "8 + 5 × 2" ❌
-- Mixed operators: "10 + 5 − 3" ❌
-- Chains of operations: "5 + 3 + 2" ❌
-- Negative numbers: "(-2) + 5", "-10", "What is -18 + 7?" ❌
-- Subtraction with negative result: "What is 5 − 20?" ❌ (result: -15)
-- Negative expressions: "-2 × -7", "(-3) × 4" ❌
-- Exponentiation: "5^2", "2^3" ❌
-- Decimals: "3.5 + 2.1", "10.5" ❌
-- Fractions: "1/2", "3/4" ❌
-- Variables: "x + 5", "2y" ❌
-- Word problems: "A train travels..." ❌
-
-🔁 VALIDATION BEFORE RETURN (MANDATORY):
-11. Before returning the quiz, CHECK EACH MATH QUESTION:
-    - Does it have more than one operator? → REGENERATE
-    - Does it contain negative numbers? → REGENERATE
-    - For subtraction, is A > B? → If not, REGENERATE
-    - Is the result positive? → If not, REGENERATE
-12. Keep ALL math questions to simple single-step arithmetic with POSITIVE RESULTS ONLY.
-
-SAFETY RULE:
-11. If unsure about correctness, REGENERATE the question instead of risking wrong answer.
-
-CONTENT RULES:
-12. Questions must be clear and unambiguous.
-13. No duplicate questions.
-14. Keep questions medium length.
-15. Return ONLY valid JSON.
-
-You are responsible for correctness. Wrong answers are unacceptable.
+You are responsible for correctness. Incorrect questions are not allowed.
 
 Response format:
 {
     "title": "Short Quiz Title",
     "questions": [
         {
-            "question_text": "What is...?",
+            "question_text": "Question here?",
             "question_type": "RADIO",
             "options": [
                 {"option_text": "Option A", "is_correct": false},
@@ -163,36 +98,26 @@ Response format:
 }
 """
         
-        user_prompt = f"""CRITICAL REQUIREMENT: Generate EXACTLY {total_questions} quiz questions. Count them before responding!
+        user_prompt = f"""CRITICAL REQUIREMENT: Generate EXACTLY {total_questions} quiz questions.
 
 Topic: {prompt}
 Difficulty: {difficulty_level}
-REQUIRED NUMBER OF QUESTIONS: {total_questions} (THIS IS MANDATORY - NOT {total_questions-1}, NOT {total_questions+1}, EXACTLY {total_questions})
-
-🔴 CRITICAL MATH VALIDATION (NON-NEGOTIABLE):
-For math questions, use ONLY SINGLE-OPERATION expressions with POSITIVE RESULTS:
-- EXACTLY ONE operation per question: A + B, A − B, A × B, or A ÷ B
-- ALL numbers MUST be POSITIVE (1-100)
-- RESULT must be POSITIVE (no negative answers)
-- For subtraction: A MUST BE GREATER THAN B (ensures positive result)
-- Format: "What is [number] [operator] [number]?"
-- ✅ ALLOWED: "What is 36 ÷ 6?" (=6), "What is 20 − 5?" (=15), "What is 12 + 8?" (=20)
-- ❌ FORBIDDEN: "What is 5 − 20?" (=-15), "What is -18 + 7?" (-18 is negative), "36 ÷ 6 + 8" (multiple ops), brackets, negative numbers
+REQUIRED NUMBER OF QUESTIONS: {total_questions}
 
 Mix of question types:
 - 70% RADIO (single correct answer)
 - 30% CHECKLIST (multiple correct answers)
 
-Ensure questions are appropriate for {difficulty_level} difficulty level.
+Ensure questions are appropriate for {difficulty_level} level.
 
 IMPORTANT VALIDATION BEFORE RESPONDING:
 ✓ Count the questions in your array
 ✓ Verify the count equals {total_questions}
-✓ If count is wrong, add or remove questions to match exactly {total_questions}
 ✓ Ensure no duplicate questions
 ✓ Ensure each question has exactly 4 unique options
+✓ Ensure each question has at least one correct answer
 
-Generate EXACTLY {total_questions} questions now."""
+Generate the quiz now."""
 
         try:
             result = self._make_request(
@@ -263,25 +188,6 @@ Generate EXACTLY {total_questions} questions now."""
             final_questions = unique_questions[:total_questions]
             print(f"[OPENAI_DIRECT] Returning exactly {len(final_questions)} unique questions")
             
-            # FINAL SAFETY LAYER — MATH OVERRIDE
-            print("[FINAL CHECK] Running math answer override...")
-            final_questions = self.evaluate_and_override_math_answers(final_questions)
-            
-            # ABSOLUTE SAFETY CHECK
-            for i, q in enumerate(final_questions):
-                correct_count = sum(1 for opt in q.get("options", []) if opt.get("is_correct", False))
-                if correct_count == 0:
-                    print(f"[CRITICAL FIX] Question {i+1} had no correct answer. Forcing first option as correct.")
-                    if q.get("options"):
-                        q["options"][0]["is_correct"] = True
-            
-            # 🔍 DEBUG LOGGING - Verify correct flags before saving
-            print("\n[DEBUG] Final Questions Before Save:")
-            for i, q in enumerate(final_questions):
-                print(f"Q{i+1}: {q['question_text']}")
-                for opt in q.get("options", []):
-                    print(f"   Option: {opt['option_text']} | is_correct={opt['is_correct']}")
-            
             return {
                 "title": title,
                 "questions": final_questions
@@ -296,48 +202,23 @@ Generate EXACTLY {total_questions} questions now."""
         
         system_prompt = """You are a STRICT mathematical and logical validator.
 
-CRITICAL MISSION:
-You must guarantee that EVERY question has a correct answer that EXISTS in the options.
+MISSION:
+Guarantee that every question has a correct answer that EXISTS in the options.
 
 RULES:
 
-1. ALWAYS recompute math questions independently.
-2. If the correct answer is not present in options:
-   → MODIFY one option to match the correct value.
-3. NEVER allow zero correct answers.
-4. NEVER allow multiple correct answers in RADIO questions.
-5. CHECKLIST must have ≥1 correct answers.
-6. Fix all numeric mistakes.
+1. Recompute math questions independently if numbers are involved.
+2. If the correct answer is not present in the options:
+   → Modify one option to match the correct value.
+3. Never allow zero correct answers.
+4. RADIO questions → exactly one correct answer.
+5. CHECKLIST questions → at least one correct answer.
+6. Fix numeric or logical mistakes.
 7. Fix mismatched answer flags.
-8. Remove impossible numeric values.
-9. Ensure logical consistency.
-10. If question cannot be corrected → rewrite the question completely with valid options.
+8. Ensure consistency between question and options.
+9. If the question is broken beyond repair, rewrite it fully with valid options.
 
-🔴 MATH QUESTION VALIDATION (MANDATORY - STRICTLY ENFORCED):
-11. If the question contains ANY of these forbidden elements, you MUST rewrite it completely:
-    ❌ MORE THAN ONE OPERATION: "36 ÷ 6 + 8", "8 + 5 × 2", "10 + 5 − 3"
-    ❌ BRACKETS/PARENTHESES: "(5 + 3) × 2", "(10 − 4) ÷ 2"
-    ❌ ORDER OF OPERATIONS: "8 + 5 × 2" (requires precedence rules)
-    ❌ CHAINED OPERATIONS: "5 + 3 + 2", "10 − 5 − 2"
-    ❌ NEGATIVE NUMBERS: (-2), -5, "What is -18 + 7?", negative expressions, "What is -2 × -7?"
-    ❌ NEGATIVE RESULTS: "What is 5 − 20?" (result: -15), subtraction where A < B
-    ❌ Exponents/Powers: 5^2, 2^3, 10^2
-    ❌ Variables/Algebra: x, y, "Solve for x", equations
-    ❌ Decimals: 3.5, 2.1, 0.75
-    ❌ Fractions: 1/2, 3/4
-    ❌ Word problems with hidden math
-12. Rewritten math questions MUST use ONLY SINGLE OPERATIONS WITH POSITIVE RESULTS:
-    ✅ Format: "What is A + B?" where A, B are positive integers 1-100
-    ✅ For subtraction: "What is A − B?" where A > B (ensures positive result)
-    ✅ EXACTLY ONE operator: +, −, ×, or ÷
-    ✅ ALL numbers must be POSITIVE (1-100)
-    ✅ RESULT must be POSITIVE
-    ✅ Valid examples: "What is 36 ÷ 6?" (=6), "What is 20 − 5?" (=15), "What is 12 + 8?" (=20)
-    ✅ NO brackets, NO multiple operations, NO negative numbers, NO negative results
-
-ABSOLUTE RULE:
-Return corrected_question that ALWAYS contains valid correct answer(s).
-Returning a question with no correct answer is FORBIDDEN.
+Return corrected_question ALWAYS.
 
 Response format (ALWAYS include corrected_question):
 {
@@ -452,18 +333,6 @@ IMPORTANT: Always return the corrected_question field, even if no changes are ne
                 print(f"[ERROR] Failed to verify question {i+1}: {e}, using original")
                 verified_questions.append(question)  # Fallback to original
         
-        # FINAL SAFETY LAYER — MATH OVERRIDE AFTER VERIFICATION
-        print("[FINAL CHECK] Running math override after verification...")
-        verified_questions = self.evaluate_and_override_math_answers(verified_questions)
-        
-        # ABSOLUTE SAFETY CHECK - Ensure no question has zero correct answers
-        for i, q in enumerate(verified_questions):
-            correct_count = sum(1 for opt in q.get("options", []) if opt.get("is_correct", False))
-            if correct_count == 0:
-                print(f"[CRITICAL FIX] Question {i+1} had no correct answer after verification. Forcing first option as correct.")
-                if q.get("options"):
-                    q["options"][0]["is_correct"] = True
-        
         return verified_questions
     
     def _is_math_question(self, question_text: str) -> bool:
@@ -572,161 +441,6 @@ IMPORTANT: Always return the corrected_question field, even if no changes are ne
         except Exception as e:
             print(f"[MATH_EVAL] Error evaluating '{expression}': {e}")
             return None
-    
-    def _extract_target_value(self, question_text: str) -> Optional[float]:
-        """Extract target value from questions like 'which equal 10' or 'select all that equal 5'"""
-        # Pattern: "equal 10", "equals 10", "equal to 10", "= 10"
-        patterns = [
-            r'equal(?:s| to)?\s+(\d+(?:\.\d+)?)',
-            r'=\s*(\d+(?:\.\d+)?)',
-            r'which.*?(\d+(?:\.\d+)?)',
-            r'select.*?(\d+(?:\.\d+)?)',
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, question_text, re.IGNORECASE)
-            if match:
-                try:
-                    return float(match.group(1))
-                except ValueError:
-                    continue
-        
-        return None
-    
-    def _compute_question_answer(self, question_text: str) -> Optional[float]:
-        """Compute the correct answer for a math question"""
-        # First, check if question asks "which equal X" (for CHECKLIST)
-        target_value = self._extract_target_value(question_text)
-        if target_value is not None:
-            return target_value
-        
-        # Extract math expression from question
-        # Look for patterns like "What is 3 + 4?" or "Calculate 5 * 2"
-        
-        # Try to find expression in question
-        expr = self._extract_math_expression(question_text)
-        if expr:
-            return self._safe_eval_math(expr)
-        
-        # Try to find "What is X?" pattern (include Unicode × ÷ − symbols)
-        what_is_match = re.search(r'what is\s+([\d\s+\-*/()^×÷−.\s]+)', question_text, re.IGNORECASE)
-        if what_is_match:
-            expr = what_is_match.group(1).strip()
-            return self._safe_eval_math(expr)
-        
-        # Try to find "Calculate X" pattern (include Unicode × ÷ − symbols)
-        calc_match = re.search(r'calculate\s+([\d\s+\-*/()^×÷−.\s]+)', question_text, re.IGNORECASE)
-        if calc_match:
-            expr = calc_match.group(1).strip()
-            return self._safe_eval_math(expr)
-        
-        # Try to find "X = ?" pattern (include Unicode × ÷ − symbols)
-        equals_q_match = re.search(r'([\d\s+\-*/()^×÷−.\s]+)\s*=\s*\?', question_text, re.IGNORECASE)
-        if equals_q_match:
-            expr = equals_q_match.group(1).strip()
-            return self._safe_eval_math(expr)
-        
-        return None
-    
-    def _evaluate_math_question(self, question: Dict[str, Any]) -> Dict[str, Any]:
-        """Evaluate math question and override correct answers based on computation"""
-        question_text = question.get("question_text", "")
-        options = question.get("options", [])
-        question_type = question.get("question_type", "RADIO")
-        
-        # 🔹 STEP 1 — Skip algebra / variable-based questions
-        # Only process pure arithmetic questions (no variables like x, y, z)
-        # Check for mathematical variables: single letters in equations, "solve for x", "find x", etc.
-        algebra_patterns = [
-            r'\b[a-z]\s*[=+\-*/()]',  # Single letter followed by math operators: "x =", "x +", "x -", "x(", etc.
-            r'[=+\-*/()]\s*\b[a-z]\b',  # Math operators followed by single letter: "= x", "+ y", "- z", "(x", etc.
-            r'\d+\s*[a-z]\b',  # Number followed by letter (no space): "3x", "2y", "5z"
-            r'solve\s+for\s+[a-z]',  # "solve for x"
-            r'find\s+[a-z]',  # "find x"
-            r'\b[a-z]\s*[-+]?\s*\d',  # Letter followed by number: "x - 5", "y + 3"
-        ]
-        if any(re.search(pattern, question_text.lower()) for pattern in algebra_patterns):
-            print(f"[MATH_EVAL] Algebra detected in '{question_text[:60]}...' — skipping arithmetic override")
-            return question
-        
-        # 🔹 STEP 2 — Compute the correct answer (arithmetic only)
-        correct_answer = self._compute_question_answer(question_text)
-        
-        if correct_answer is None:
-            print(f"[MATH_EVAL] Could not compute arithmetic answer — skipping override")
-            return question
-        
-        print(f"[MATH_EVAL] Computed correct answer: {correct_answer}")
-        
-        # Evaluate each option and determine which are correct
-        option_values = []
-        for i, option in enumerate(options):
-            option_text = option.get("option_text", "")
-            expr = self._extract_math_expression(option_text)
-            
-            if expr:
-                value = self._safe_eval_math(expr)
-                option_values.append((i, value, option))
-                print(f"[MATH_EVAL] Option {i+1} '{option_text}' -> {value}")
-            else:
-                # If we can't extract math, keep original is_correct flag
-                option_values.append((i, None, option))
-                print(f"[MATH_EVAL] Option {i+1} '{option_text}' -> Could not extract math")
-        
-        # Determine correct options based on computed values
-        # For RADIO: exactly one option matching correct_answer
-        # For CHECKLIST: all options matching correct_answer
-        
-        # Reset all is_correct flags
-        for _, _, option in option_values:
-            option["is_correct"] = False
-        
-        # Find options that match the correct answer (with tolerance for floating point)
-        correct_options = []
-        for i, value, option in option_values:
-            if value is not None:
-                # Use small tolerance for floating point comparison
-                if abs(value - correct_answer) < 0.0001:
-                    correct_options.append((i, option))
-        
-        if not correct_options:
-            print(f"[MATH_EVAL] WARNING: No options match computed answer {correct_answer}, using first option")
-            if options:
-                options[0]["is_correct"] = True
-        elif question_type == "RADIO":
-            # RADIO: exactly one correct answer
-            if len(correct_options) == 1:
-                correct_options[0][1]["is_correct"] = True
-                print(f"[MATH_EVAL] RADIO: Marked option {correct_options[0][0]+1} as correct")
-            else:
-                # Multiple options match - use first one
-                print(f"[MATH_EVAL] RADIO: Multiple options match, using first: {len(correct_options)} options")
-                correct_options[0][1]["is_correct"] = True
-        elif question_type == "CHECKLIST":
-            # CHECKLIST: mark all matching options as correct
-            for _, option in correct_options:
-                option["is_correct"] = True
-            print(f"[MATH_EVAL] CHECKLIST: Marked {len(correct_options)} options as correct")
-        
-        return question
-    
-    def evaluate_and_override_math_answers(self, questions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Evaluate math questions and override LLM-provided correct answers"""
-        corrected_questions = []
-        
-        for i, question in enumerate(questions):
-            question_text = question.get("question_text", "")
-            
-            # Check if this is a math question
-            if self._is_math_question(question_text):
-                print(f"[MATH_EVAL] Processing math question {i+1}: {question_text[:50]}...")
-                corrected_question = self._evaluate_math_question(question)
-                corrected_questions.append(corrected_question)
-            else:
-                # Not a math question, keep as-is
-                corrected_questions.append(question)
-        
-        return corrected_questions
     
     def generate_quiz_name(self, prompt: str) -> str:
         """Generate a concise quiz name from the prompt"""
