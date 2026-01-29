@@ -14,8 +14,40 @@ from app.routers import users, quiz, test, assignment, prompt
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
+    print("=" * 80)
+    print("DATABASE CONFIGURATION")
+    print("=" * 80)
+    print(f"DATABASE URI: {settings.database_url}")
+    print(f"Host: {settings.DATABASE_HOST}")
+    print(f"Port: {settings.DATABASE_PORT}")
+    print(f"Database: {settings.DATABASE_NAME}")
+    print(f"User: {settings.DATABASE_USER}")
+    print("=" * 80)
+    
     Database.initialize()
     print("[OK] Database connection pool initialized")
+    
+    # Verify tables exist
+    try:
+        from app.database import Database
+        with Database.get_cursor(commit=False) as cursor:
+            cursor.execute("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+                ORDER BY table_name
+            """)
+            tables = cursor.fetchall()
+            print("\n[DATABASE TABLES]")
+            if tables:
+                for table in tables:
+                    print(f"  ✓ {table['table_name']}")
+            else:
+                print("  ⚠️  WARNING: No tables found!")
+                print("  Run: python reset_database.py")
+            print()
+    except Exception as e:
+        print(f"[ERROR] Failed to check tables: {e}")
     
     yield
     

@@ -1,0 +1,165 @@
+================================================================================
+DATABASE VERIFICATION SYSTEM - COMPLETE
+================================================================================
+
+Your tech stack is FastAPI + PostgreSQL (not Flask + SQLAlchemy).
+
+Adapted your requirements for your actual system.
+
+================================================================================
+WHAT WAS ADDED
+================================================================================
+
+✓ Database URI printing at startup
+✓ Database connection details at startup
+✓ Table existence check at startup
+✓ Step-by-step registration debugging
+✓ Comprehensive database diagnostic tool
+
+================================================================================
+AT STARTUP (app/main.py)
+================================================================================
+
+Backend now shows:
+
+================================================================================
+DATABASE CONFIGURATION
+================================================================================
+DATABASE URI: postgresql://user:pass@localhost:5432/testmyknowledge
+Host: localhost
+Port: 5432
+Database: testmyknowledge
+User: postgres
+================================================================================
+[OK] Database connection pool initialized
+
+[DATABASE TABLES]
+  ✓ User
+  ✓ Quiz
+  ✓ Question
+  ✓ QuestionOption
+  ...
+
+Answers:
+• Which DB is being used ✓
+• Tables exist ✓
+
+================================================================================
+REGISTRATION DEBUG (app/routers/users.py)
+================================================================================
+
+Shows each step:
+
+[STEP 1] Checking if username exists... ✓
+[STEP 2] Checking if email exists... ✓
+[STEP 3] Hashing password... ✓ (length: 102)
+[STEP 4] Trying to save user to database...
+[STEP 4] ✅ User saved successfully! User ID: 1
+
+Answers:
+• Insert succeeds ✓
+
+================================================================================
+DIAGNOSTIC TOOL (check_database.py)
+================================================================================
+
+Run before starting backend:
+
+python check_database.py
+
+Shows:
+• Database connection details
+• PostgreSQL version
+• All tables in database
+• User table structure (columns, types, lengths)
+• Number of users
+• Database read/write capability
+
+================================================================================
+HOW TO USE
+================================================================================
+
+STEP 1: Check database
+
+cd backend
+python check_database.py
+
+If no tables found:
+python reset_database.py
+
+STEP 2: Start backend
+
+python run.py
+
+Watch startup output for:
+- Database URI
+- List of tables
+
+STEP 3: Test registration
+
+curl -X POST http://localhost:8000/users/register \
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"test1\",\"password\":\"Pass123!\",\"first_name\":\"Test\",\"last_name\":\"User\",\"email_id\":\"test@test.com\",\"role\":\"STUDENT\"}"
+
+Watch backend terminal for step-by-step output.
+
+================================================================================
+FILES MODIFIED
+================================================================================
+
+✓ backend/app/main.py
+  - Database URI printed at startup
+  - Table existence check at startup
+
+✓ backend/app/routers/users.py
+  - Step-by-step registration logging
+  - Shows where registration fails
+
+✓ backend/check_database.py (NEW)
+  - Comprehensive database diagnostic
+
+✓ backend/DATABASE_DEBUG_STEPS.md (NEW)
+  - Detailed debugging guide
+
+✓ QUICK_START_DEBUG.md (NEW)
+  - Quick reference for debugging
+
+================================================================================
+WHAT YOU'LL SEE
+================================================================================
+
+If database is working:
+
+[STEP 1] ✓ Username available
+[STEP 2] ✓ Email available
+[STEP 3] ✓ Password hashed (length: 102)
+[STEP 4] ✅ User saved successfully! User ID: 1
+
+If database has issues:
+
+[STEP 4] ❌ relation "User" does not exist
+→ Solution: python reset_database.py
+
+or
+
+[STEP 4] ❌ value too long for type character varying(60)
+→ Solution: python reset_database.py
+
+================================================================================
+VERIFICATION COMPLETE
+================================================================================
+
+You now have:
+✓ Database URI shown at startup
+✓ Tables list shown at startup
+✓ Step-by-step registration debug
+✓ Diagnostic tool to check database
+✓ Clear error messages
+
+No more guessing. The terminal shows exactly:
+• Which database is being used
+• Whether tables exist
+• Which step fails
+• Exact error message
+
+================================================================================

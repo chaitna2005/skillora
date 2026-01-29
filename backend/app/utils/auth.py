@@ -1,22 +1,15 @@
 """
-Authentication Utilities
-Password hashing and JWT token management
+Authentication Utilities - JWT Token Management Only
+
+Password hashing is done directly in routes using werkzeug:
+    from werkzeug.security import generate_password_hash, check_password_hash
+    
+No custom password helpers in this file.
 """
-import hashlib
 from typing import Optional
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from app.config import settings
-
-
-def hash_password(password: str) -> str:
-    """Hash password using SHA256"""
-    return hashlib.sha256(password.encode()).hexdigest()
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against hash"""
-    return hash_password(plain_password) == hashed_password
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

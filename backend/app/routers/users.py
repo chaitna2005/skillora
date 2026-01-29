@@ -4,11 +4,12 @@ API endpoints for user registration and authentication
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from psycopg2.extras import RealDictCursor
+from werkzeug.security import generate_password_hash, check_password_hash
 from app.database import get_db
 from app.schemas.user import UserRegister, UserLogin, UserResponse, LoginResponse, UserStatsResponse
 from app.models.user import UserModel
 from app.services.user_stats_service import UserStatsService
-from app.utils.auth import hash_password, verify_password, create_access_token
+from app.utils.auth import create_access_token
 
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -16,32 +17,44 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user: UserRegister, cursor: RealDictCursor = Depends(get_db)):
-    """Register a new user"""
+    """
+    Register a new user
+    
+    IMPORTANT: Delete old database and recreate tables after password handling changes.
+    Old password hashes are incompatible with werkzeug implementation.
+    """
+    
+    print("=" * 80)
+    print(f"[REGISTRATION] Attempting to register user: {user.username}")
+    print("=" * 80)
     
     try:
-        print(f"[REGISTER] Attempting to register user: {user.username}")
-        
         # Check if username already exists
+        print(f"[STEP 1] Checking if username '{user.username}' exists...")
         existing_user = UserModel.get_user_by_username(cursor, user.username)
         if existing_user:
-            print(f"[REGISTER] Username {user.username} already exists")
+            print(f"[STEP 1] ❌ Username already exists")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already exists"
             )
+        print(f"[STEP 1] ✓ Username available")
         
         # Check if email already exists
+        print(f"[STEP 2] Checking if email '{user.email_id}' exists...")
         existing_email = UserModel.get_user_by_email(cursor, user.email_id)
         if existing_email:
-            print(f"[REGISTER] Email {user.email_id} already registered")
+            print(f"[STEP 2] ❌ Email already registered")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
             )
+        print(f"[STEP 2] ✓ Email available")
         
-        # Hash password
-        hashed_password = hash_password(user.password)
-        print(f"[REGISTER] Password hashed successfully")
+        # Hash password using werkzeug directly (no custom helpers)
+        print(f"[STEP 3] Hashing password...")
+        hashed_password = generate_password_hash(user.password)
+        print(f"[STEP 3] ✓ Password hashed (length: {len(hashed_password)})")
         
         # Create user
         user_data = {
@@ -53,20 +66,21 @@ def register_user(user: UserRegister, cursor: RealDictCursor = Depends(get_db)):
             "role": user.role.value
         }
         
-        print(f"[REGISTER] Creating user with data: {user.username}, {user.email_id}, role: {user.role.value}")
+        print(f"[STEP 4] Trying to save user '{user.username}' to database...")
         created_user = UserModel.create_user(cursor, user_data)
-        print(f"[REGISTER] User created successfully with ID: {created_user.get('user_id')}")
+        print(f"[STEP 4] ✅ User saved successfully! User ID: {created_user.get('user_id')}")
+        print("=" * 80)
         
         return created_user
         
     except HTTPException:
-        # Re-raise HTTP exceptions
+        print("=" * 80)
         raise
     except Exception as e:
-        # Log the real error
-        print(f"[REGISTER ERROR] Registration failed for {user.username}: {str(e)}")
+        print(f"[REGISTRATION ERROR] ❌ {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
+        print("=" * 80)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Registration failed: {str(e)}"
@@ -75,44 +89,36 @@ def register_user(user: UserRegister, cursor: RealDictCursor = Depends(get_db)):
 
 @router.post("/login", response_model=LoginResponse)
 def login_user(credentials: UserLogin, cursor: RealDictCursor = Depends(get_db)):
-    """Authenticate user and return token"""
+    """
+    Authenticate user and return token
+    Uses werkzeug.security.check_password_hash directly for password verification
+    """
     
     try:
-        print(f"[LOGIN] Attempting login for user: {credentials.username}")
-        
         # Get user by username
         user = UserModel.get_user_by_username(cursor, credentials.username)
         
+        # User not found or password invalid
         if not user:
-            print(f"[LOGIN] User not found: {credentials.username}")
             return LoginResponse(
                 success=False,
                 message="Invalid username or password"
             )
         
-        print(f"[LOGIN] User found: {credentials.username}, ID: {user.get('user_id')}, Role: {user.get('role')}")
-        print(f"[LOGIN] Stored password hash: {user.get('password', 'N/A')[:20]}...")
-        
-        # Verify password
         stored_hash = user.get("password")
         if not stored_hash:
-            print(f"[LOGIN ERROR] No password hash found for user {credentials.username}")
             return LoginResponse(
                 success=False,
                 message="Invalid username or password"
             )
         
-        password_valid = verify_password(credentials.password, stored_hash)
-        print(f"[LOGIN] Password verification result: {password_valid}")
-        
-        if not password_valid:
-            print(f"[LOGIN] Password verification failed for {credentials.username}")
+        # Verify password using werkzeug directly (no custom helpers)
+        # check_password_hash(stored_hash, password) - NO direct comparison
+        if not check_password_hash(stored_hash, credentials.password):
             return LoginResponse(
                 success=False,
                 message="Invalid username or password"
             )
-        
-        print(f"[LOGIN] Login successful for {credentials.username}")
         
         # Create access token
         access_token = create_access_token(data={
@@ -132,7 +138,7 @@ def login_user(credentials: UserLogin, cursor: RealDictCursor = Depends(get_db))
         )
         
     except Exception as e:
-        print(f"[LOGIN ERROR] Login failed for {credentials.username}: {str(e)}")
+        print(f"[ERROR] Login failed: {str(e)}")
         import traceback
         traceback.print_exc()
         return LoginResponse(

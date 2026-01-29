@@ -21,7 +21,7 @@ CREATE TABLE "User" (
     user_id SERIAL PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    username VARCHAR(50) UNIQUE NOT NULL,
+    username VARCHAR(150) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     email_id VARCHAR(255) UNIQUE NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('TEACHER', 'STUDENT')),
