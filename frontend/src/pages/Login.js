@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { loginUser } from '../services/api';
 import '../styles/Auth.css';
@@ -12,6 +12,7 @@ const Login = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,6 +64,10 @@ const Login = () => {
           <h2>Welcome Back!</h2>
           <p>Login to continue your learning journey</p>
         </div>
+
+        {location.state?.message && (
+          <div className="success-message">{location.state.message}</div>
+        )}
 
         {error && <div className="error-message">{error}</div>}
 

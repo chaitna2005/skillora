@@ -31,8 +31,10 @@ const Register = () => {
 
     try {
       await registerUser(formData);
-      alert('Registration successful! Please login.');
-      navigate('/login');
+      // Redirect to login with success message
+      navigate('/login', { 
+        state: { message: 'Registration successful! Please log in.' }
+      });
     } catch (err) {
       // Handle different error formats
       let errorMessage = 'Registration failed. Please try again.';
