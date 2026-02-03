@@ -54,7 +54,7 @@ class OpenAIService:
     ) -> Dict[str, Any]:
         """Generate quiz questions using direct API calls"""
         
-       system_prompt = """You are an expert quiz creator and answer validator. Generate clear, educational, and fully correct quiz questions based on the given topic.
+        system_prompt = """You are an expert quiz creator and answer validator. Generate clear, educational, and fully correct quiz questions based on the given topic.
 
 RULES:
 

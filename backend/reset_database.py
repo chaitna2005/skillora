@@ -35,13 +35,28 @@ def reset_database():
         conn.autocommit = True
         cursor = conn.cursor()
         
+        # First, drop all tables forcefully
+        print("🗑️  Dropping existing tables...")
+        drop_tables_sql = """
+        DROP TABLE IF EXISTS "Quiz_Take_Question_Answers" CASCADE;
+        DROP TABLE IF EXISTS "User_Quiz_Take" CASCADE;
+        DROP TABLE IF EXISTS "QuestionOption" CASCADE;
+        DROP TABLE IF EXISTS "Question" CASCADE;
+        DROP TABLE IF EXISTS "Quiz_Assignment" CASCADE;
+        DROP TABLE IF EXISTS "Quiz" CASCADE;
+        DROP TABLE IF EXISTS "Example_Prompt" CASCADE;
+        DROP TABLE IF EXISTS "User_Stats" CASCADE;
+        DROP TABLE IF EXISTS "User" CASCADE;
+        """
+        cursor.execute(drop_tables_sql)
+        print("  ✓ All tables dropped")
+        
         # Read schema file
         print("📄 Reading schema file...")
         with open('../database/schema.sql', 'r', encoding='utf-8') as f:
             schema_sql = f.read()
         
-        # Execute schema
-        print("🗑️  Dropping existing tables...")
+        # Execute schema (create tables)
         print("🏗️  Creating new tables with updated schema...")
         cursor.execute(schema_sql)
         

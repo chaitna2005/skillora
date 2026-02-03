@@ -29,7 +29,6 @@ async def lifespan(app: FastAPI):
     
     # Verify tables exist
     try:
-        from app.database import Database
         with Database.get_cursor(commit=False) as cursor:
             cursor.execute("""
                 SELECT table_name 
