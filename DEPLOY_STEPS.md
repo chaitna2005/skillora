@@ -98,13 +98,23 @@ You should see `state: RUNNABLE`. If the instance is still creating, wait a few 
 
 **4.2 Apply the schema (tables)**
 
-Install [Cloud SQL Proxy](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy) and have `psql` available, then:
+**Option A – using Docker (no local install):**
+
+```bash
+make gcp-schema-docker
+```
+
+Uses Cloud SQL Proxy and `psql` in containers. Ensure Docker is running and you’ve run `gcloud auth application-default login` once if needed.
+
+**Option B – using local tools:**
+
+Install [Cloud SQL Proxy](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy) and `psql` (e.g. `brew install cloud-sql-proxy postgresql`), then:
 
 ```bash
 make gcp-schema
 ```
 
-This runs `database/schema.sql` on your Cloud SQL database. After this, the DB is ready for the backend.
+Either way, `database/schema.sql` is applied and the DB is ready for the backend.
 
 ---
 
@@ -121,6 +131,8 @@ make gcp-configure-docker
 ```bash
 make gcp-build
 ```
+
+(Images are built for `linux/amd64` for Cloud Run; on Apple Silicon this may take a bit longer.)
 
 **5.3 Deploy the backend to Cloud Run**
 
@@ -193,11 +205,11 @@ Use the **Frontend** URL from the output (e.g. `https://skillora-frontend-xxxxx-
 | Step | Command | Notes |
 |------|---------|--------|
 | 1 | Create `gcp.env` from `gcp.env.example`, set `DB_PASSWORD`, `OPENAI_API_KEY`, `SECRET_KEY` | Env vars for deploy |
-| 2 | `make gcp-auth` | Select project skillora-App |
+| 2 | `make gcp-auth` | Select project (set `GCP_PROJECT` in gcp.env if not default) |
 | 3 | `make gcp-apis` then `make gcp-repo` | APIs + Artifact Registry |
 | 4a | `make gcp-db-create` | DB + user on existing instance |
 | 4b | `make gcp-db-status` | Confirm instance is RUNNABLE |
-| 4c | `make gcp-schema` | Apply schema (need Cloud SQL Proxy + psql) |
+| 4c | `make gcp-schema-docker` or `make gcp-schema` | Apply schema (Docker = no local install) |
 | 5 | `make gcp-configure-docker` then `make gcp-build` then `make gcp-deploy-backend` | Deploy backend |
 | 5b | Add `BACKEND_URL=...` to `gcp.env` | From deploy output |
 | 6 | `make gcp-build-frontend` then `make gcp-deploy-frontend` | Deploy frontend |
