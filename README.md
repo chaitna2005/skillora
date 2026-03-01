@@ -17,6 +17,7 @@ A web application that allows users to create AI-generated quizzes and test thei
   - [Linux Setup](#linux-setup)
 - [Configuration](#configuration)
 - [Running the Application](#running-the-application)
+- [Running with Docker (Local)](#running-with-docker-local)
 - [API Documentation](#api-documentation)
 - [Database Schema](#database-schema)
 - [Troubleshooting](#troubleshooting)
@@ -344,6 +345,45 @@ npm start
 ```
 
 Frontend will open automatically at: `http://localhost:3000`
+
+---
+
+## 🐳 Running with Docker (Local)
+
+Run the full app (PostgreSQL, backend, frontend) in Docker with no local Python/Node/Postgres install.
+
+### Prerequisites
+
+- **Docker** and **Docker Compose** installed ([docs](https://docs.docker.com/get-docker/))
+- **OpenAI API key** for quiz generation
+
+### Setup and run
+
+1. **Create environment file** (from project root):
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and set at least:
+   - `OPENAI_API_KEY=sk-your-openai-api-key`
+   - Optionally change `POSTGRES_PASSWORD` and `SECRET_KEY` for local use.
+
+2. **Start all services**:
+   ```bash
+   docker compose up --build
+   ```
+   First run will build the backend and frontend images and create the Postgres database (schema runs automatically from `database/schema.sql`).
+
+3. **Open the app**
+   - **App:** [http://localhost:3000](http://localhost:3000)
+   - **API:** [http://localhost:8000](http://localhost:8000)
+   - **API docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Useful commands
+
+- **Run in background:** `docker compose up -d --build`
+- **View logs:** `docker compose logs -f`
+- **Stop:** `docker compose down`
+- **Reset database (delete data):** `docker compose down -v` then `docker compose up -d`
 
 ---
 
