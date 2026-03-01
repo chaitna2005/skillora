@@ -28,9 +28,16 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    # CORS
-    CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:5173"]
-    
+    # CORS: use str so env "*" is not json-decoded; use cors_origins_list in app
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+
+    @property
+    def cors_origins_list(self) -> list:
+        v = (self.CORS_ORIGINS or "").strip()
+        if v == "*":
+            return ["*"]
+        return [x.strip() for x in v.split(",") if x.strip()] or ["http://localhost:3000"]
+
     class Config:
         env_file = ".env"
         env_file_encoding = 'utf-8'

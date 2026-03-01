@@ -14,5 +14,6 @@ COPY docker-entrypoint.sh ./
 # Config is loaded from env (docker-compose); .env is optional
 RUN chmod +x docker-entrypoint.sh
 
-EXPOSE 8000
+EXPOSE 8080
+ENV PORT=8080
 ENTRYPOINT ["./docker-entrypoint.sh"]

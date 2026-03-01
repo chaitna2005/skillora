@@ -595,28 +595,20 @@ Once the backend is running, visit `http://localhost:8000/docs` for interactive 
 
 ## 🚀 Deployment (Google Cloud)
 
-### Prerequisites
-- Google Cloud account
-- gcloud CLI installed
+Deploy to project **skillora-App** using the Makefile. Full steps: **[DEPLOY.md](DEPLOY.md)**.
 
-### Steps (High-level)
+**Prerequisites:** [gcloud CLI](https://cloud.google.com/sdk/docs/install), Docker.
 
-1. **Backend Deployment (Cloud Run)**
-   - Containerize FastAPI app
-   - Push to Google Container Registry
-   - Deploy to Cloud Run
-
-2. **Database (Cloud SQL)**
-   - Create PostgreSQL instance
-   - Import schema
-   - Update connection strings
-
-3. **Frontend (Cloud Storage + CDN)**
-   - Build React app: `npm run build`
-   - Upload to Cloud Storage bucket
-   - Enable static website hosting
-
-*Detailed deployment guide coming soon*
+**Quick sequence:**
+```bash
+cp gcp.env.example gcp.env   # set DB_PASSWORD, OPENAI_API_KEY, SECRET_KEY
+make gcp-auth && make gcp-apis && make gcp-repo
+make gcp-db && make gcp-schema
+make gcp-build && make gcp-deploy-backend
+# Add BACKEND_URL to gcp.env, then:
+make gcp-build-frontend && make gcp-deploy-frontend
+make gcp-urls
+```
 
 ---
 

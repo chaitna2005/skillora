@@ -12,47 +12,13 @@ from app.routers import users, quiz, test, assignment, prompt
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events"""
-    # Startup
-    print("=" * 80)
-    print("DATABASE CONFIGURATION")
-    print("=" * 80)
-    print(f"DATABASE URI: {settings.database_url}")
-    print(f"Host: {settings.DATABASE_HOST}")
-    print(f"Port: {settings.DATABASE_PORT}")
-    print(f"Database: {settings.DATABASE_NAME}")
-    print(f"User: {settings.DATABASE_USER}")
-    print("=" * 80)
-    
-    Database.initialize()
-    print("[OK] Database connection pool initialized")
-    
-    # Verify tables exist
-    try:
-        with Database.get_cursor(commit=False) as cursor:
-            cursor.execute("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-                ORDER BY table_name
-            """)
-            tables = cursor.fetchall()
-            print("\n[DATABASE TABLES]")
-            if tables:
-                for table in tables:
-                    print(f"  ✓ {table['table_name']}")
-            else:
-                print("  ⚠️  WARNING: No tables found!")
-                print("  Run: python reset_database.py")
-            print()
-    except Exception as e:
-        print(f"[ERROR] Failed to check tables: {e}")
-    
+    """Application lifespan: defer DB init so Cloud Run sees port open immediately."""
+    # Don't block startup on DB - listen first, init DB in background/on first request
     yield
-    
-    # Shutdown
-    Database.close()
-    print("[OK] Database connections closed")
+    try:
+        Database.close()
+    except Exception:
+        pass
 
 
 # Initialize FastAPI app
@@ -66,7 +32,7 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
