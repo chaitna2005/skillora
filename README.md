@@ -18,6 +18,7 @@ A web application that allows users to create AI-generated quizzes and test thei
 - [Configuration](#configuration)
 - [Running the Application](#running-the-application)
 - [Running with Docker (Local)](#running-with-docker-local)
+- [Deploy to VPS (Docker Hub)](#deploy-to-vps-docker-hub)
 - [API Documentation](#api-documentation)
 - [Database Schema](#database-schema)
 - [Troubleshooting](#troubleshooting)
@@ -384,6 +385,12 @@ Run the full app (PostgreSQL, backend, frontend) in Docker with no local Python/
 - **View logs:** `docker compose logs -f`
 - **Stop:** `docker compose down`
 - **Reset database (delete data):** `docker compose down -v` then `docker compose up -d`
+
+### Deploy to VPS (Docker Hub)
+
+Pre-built images (no build on the droplet): **`scripts/build-and-push-images.sh`**, **`docker-compose.pull.yml`**, env template **`deploy/.env.example`**.
+
+Full steps: **[docs/DEPLOY-DROPLET.md](docs/DEPLOY-DROPLET.md)** — on a shared droplet with ERP, Skillora uses **9080** (UI) and **9081** (API); ERP stays on **8080**.
 
 ---
 

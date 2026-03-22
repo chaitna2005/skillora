@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { loginUser } from '../services/api';
+import { loginUser, API_BASE_URL } from '../services/api';
 import '../styles/Auth.css';
 
 const Login = () => {
@@ -35,7 +35,18 @@ const Login = () => {
     } catch (err) {
       // Handle different error formats
       let errorMessage = 'Invalid username or password';
-      if (err.response?.data?.detail) {
+      if (!err.response) {
+        const msg = err.message || '';
+        const net =
+          msg === 'Network Error' ||
+          err.code === 'ERR_NETWORK' ||
+          msg.includes('Failed to fetch');
+        if (net) {
+          errorMessage = `Cannot reach the API (${API_BASE_URL}). Rebuild the frontend with REACT_APP_API_URL=http://YOUR_IP:9081, push the image, and redeploy.`;
+        } else {
+          errorMessage = msg || errorMessage;
+        }
+      } else if (err.response?.data?.detail) {
         const detail = err.response.data.detail;
         // If detail is a string, use it directly
         if (typeof detail === 'string') {

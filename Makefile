@@ -1,7 +1,7 @@
 # Skillora - Local & Google Cloud
 # Project: skillora-App
 
-.PHONY: help local build gcp-auth gcp-apis gcp-repo gcp-db gcp-db-create gcp-db-status gcp-schema gcp-schema-docker gcp-build gcp-deploy-backend gcp-deploy-frontend gcp-deploy-all gcp-urls gcp-clean
+.PHONY: help local build docker-hub-build-push gcp-auth gcp-apis gcp-repo gcp-db gcp-db-create gcp-db-status gcp-schema gcp-schema-docker gcp-build gcp-deploy-backend gcp-deploy-frontend gcp-deploy-all gcp-urls gcp-clean
 
 # -----------------------------------------------------------------------------
 # Local
@@ -14,6 +14,15 @@ local-down:
 
 local-logs:
 	docker compose logs -f
+
+# -----------------------------------------------------------------------------
+# Docker Hub - build linux/amd64 on Mac, push, then pull on droplet (docs/DEPLOY-DROPLET.md)
+# Use this if bash scripts/build-and-push-images.sh fails with ": command not found" (CRLF).
+# Pipe (not bash <(...)) so /bin/sh (Make's default) can run the recipe on macOS.
+# -----------------------------------------------------------------------------
+docker-hub-build-push:
+	@test -f deploy/.env.production || (echo "Missing deploy/.env.production - copy deploy/.env.example" && exit 1)
+	tr -d '\r' < scripts/build-and-push-images.sh | bash
 
 # -----------------------------------------------------------------------------
 # Google Cloud (project ID must be lowercase, e.g. skillora-app)

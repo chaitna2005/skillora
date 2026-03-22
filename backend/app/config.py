@@ -19,9 +19,13 @@ class Settings(BaseSettings):
     DATABASE_USER: str
     DATABASE_PASSWORD: str
     
-    # OpenAI
+    # OpenAI — see app/services/openai_service.py module docstring for model picks
     OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    # Default: gpt-5.4-mini (strong cost/quality for quiz JSON). Override: gpt-5.4, gpt-5.4-nano, gpt-4o-mini, etc.
+    OPENAI_MODEL: str = "gpt-5.4-mini"
+    # GPT-5.4 family only: none | low | medium | high | xhigh. Use "" to omit (e.g. pure gpt-4o).
+    # If not "none", do not set temperature (API constraint). See openai_service._chat_completion_params.
+    OPENAI_REASONING_EFFORT: Optional[str] = "none"
     
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"

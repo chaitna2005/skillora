@@ -1,0 +1,72 @@
+# Skillora — pull-only production-style deploy (images built elsewhere, e.g. Mac + Docker Hub)
+# Prereq: scripts/build-and-push-images.sh pushed skillora-backend:latest and skillora-frontend:latest
+#
+# Usage:
+#   cp deploy/.env.example deploy/.env.production   # edit DOCKER_USER, secrets, CORS_ORIGINS
+#   docker compose --env-file deploy/.env.production -f docker-compose.pull.yml pull
+#   docker compose --env-file deploy/.env.production -f docker-compose.pull.yml up -d
+#
+# --- Host ports vs ERP (erp-platform on same droplet) ---
+#   ERP:     8080  → nginx (React + Spring API + Keycloak on one origin)
+#   Skillora: 9080 → UI only   |  9081 → FastAPI (set REACT_APP_API_URL to http://IP:9081 at build)
+#   Postgres for both stacks stays inside Docker (no host port) unless you change ERP compose.
+# Edit the two "ports:" mappings below only if 9080/9081 are already taken.
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: skillora-postgres
+    env_file: deploy/.env.production
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-testmyknowledge}
+    volumes:
+      - skillora_postgres_data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-testmyknowledge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - skillora_net
+    restart: unless-stopped
+
+  backend:
+    image: ${DOCKER_USER}/skillora-backend:latest
+    container_name: skillora-backend
+    env_file: deploy/.env.production
+    environment:
+      PORT: "8000"
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: ${POSTGRES_DB:-testmyknowledge}
+      DATABASE_USER: ${POSTGRES_USER:-postgres}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "9081:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - skillora_net
+    restart: unless-stopped
+
+  frontend:
+    image: ${DOCKER_USER}/skillora-frontend:latest
+    container_name: skillora-frontend
+    ports:
+      - "9080:80"
+    depends_on:
+      - backend
+    networks:
+      - skillora_net
+    restart: unless-stopped
+
+volumes:
+  skillora_postgres_data:
+
+networks:
+  skillora_net:
+    driver: bridge
