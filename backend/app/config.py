@@ -19,21 +19,34 @@ class Settings(BaseSettings):
     DATABASE_USER: str
     DATABASE_PASSWORD: str
     
-    # OpenAI
+    # OpenAI — see app/services/openai_service.py module docstring for model picks
     OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    # Default: gpt-5.4-mini (strong cost/quality for quiz JSON). Override: gpt-5.4, gpt-5.4-nano, gpt-4o-mini, etc.
+    OPENAI_MODEL: str = "gpt-5.4-mini"
+    # GPT-5.4 family only: none | low | medium | high | xhigh. Use "" to omit (e.g. pure gpt-4o).
+    # If not "none", do not set temperature (API constraint). See openai_service._chat_completion_params.
+    OPENAI_REASONING_EFFORT: Optional[str] = "none"
     
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    # CORS
-    CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:5173"]
-    
+    # CORS: use str so env "*" is not json-decoded; use cors_origins_list in app
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+
+    @property
+    def cors_origins_list(self) -> list:
+        v = (self.CORS_ORIGINS or "").strip()
+        if v == "*":
+            return ["*"]
+        return [x.strip() for x in v.split(",") if x.strip()] or ["http://localhost:3000"]
+
     class Config:
         env_file = ".env"
+        env_file_encoding = 'utf-8'
         case_sensitive = True
+        extra = 'ignore'
     
     @property
     def database_url(self) -> str:

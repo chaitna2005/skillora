@@ -16,14 +16,19 @@ class Database:
     def initialize(cls):
         """Initialize database connection pool"""
         if cls._pool is None:
-            cls._pool = SimpleConnectionPool(
-                minconn=1,
-                maxconn=10,
+            # connect_timeout avoids hanging on Cloud Run when socket is not ready yet
+            conn_kw = dict(
                 host=settings.DATABASE_HOST,
                 port=settings.DATABASE_PORT,
                 database=settings.DATABASE_NAME,
                 user=settings.DATABASE_USER,
-                password=settings.DATABASE_PASSWORD
+                password=settings.DATABASE_PASSWORD,
+                connect_timeout=10,
+            )
+            cls._pool = SimpleConnectionPool(
+                minconn=1,
+                maxconn=10,
+                **conn_kw
             )
     
     @classmethod

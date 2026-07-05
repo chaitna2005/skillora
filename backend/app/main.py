@@ -7,21 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import Database
-from app.routers import users, quiz, test
+from app.routers import users, quiz, test, assignment, prompt
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events"""
-    # Startup
-    Database.initialize()
-    print("✅ Database connection pool initialized")
-    
+    """Application lifespan: defer DB init so Cloud Run sees port open immediately."""
+    # Don't block startup on DB - listen first, init DB in background/on first request
     yield
-    
-    # Shutdown
-    Database.close()
-    print("✅ Database connections closed")
+    try:
+        Database.close()
+    except Exception:
+        pass
 
 
 # Initialize FastAPI app
@@ -35,7 +32,7 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,6 +42,8 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(quiz.router)
 app.include_router(test.router)
+app.include_router(assignment.router)
+app.include_router(prompt.router)
 
 
 @app.get("/")

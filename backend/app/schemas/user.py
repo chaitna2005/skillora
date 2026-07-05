@@ -43,3 +43,10 @@ class LoginResponse(BaseModel):
     user: Optional[UserResponse] = None
     access_token: Optional[str] = None
 
+
+class UserStatsResponse(BaseModel):
+    quiz_completion_count: int
+    current_streak: int
+    longest_streak: int
+    last_active_date: Optional[datetime] = None
+    unlocked_badges: list[str]

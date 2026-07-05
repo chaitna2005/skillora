@@ -1,53 +1,71 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { registerUser } from '../api/api';
+import { useNavigate, Link } from 'react-router-dom';
+import { registerUser, API_BASE_URL } from '../services/api';
+import '../styles/Auth.css';
 
-function Register() {
-  const navigate = useNavigate();
+const Register = () => {
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
     username: '',
-    email_id: '',
     password: '',
-    confirmPassword: '',
-    role: 'STUDENT',
+    email_id: '',
+    role: 'STUDENT'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: e.target.value
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const { confirmPassword, ...registrationData } = formData;
-      await registerUser(registrationData);
-      
-      alert('Registration successful! Please login.');
-      navigate('/login');
+      await registerUser(formData);
+      // Redirect to login with success message
+      navigate('/login', { 
+        state: { message: 'Registration successful! Please log in.' }
+      });
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      // Handle different error formats
+      let errorMessage = 'Registration failed. Please try again.';
+      // No response = wrong API URL at build time, CORS, or server down
+      if (!err.response) {
+        const msg = err.message || '';
+        const net =
+          msg === 'Network Error' ||
+          err.code === 'ERR_NETWORK' ||
+          msg.includes('Failed to fetch');
+        if (net) {
+          errorMessage = `Cannot reach the API (${API_BASE_URL}). Rebuild the frontend image with REACT_APP_API_URL set to your real API URL (e.g. http://YOUR_IP:9081), then push and redeploy.`;
+        } else {
+          errorMessage = msg || errorMessage;
+        }
+      } else if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        // If detail is a string, use it directly
+        if (typeof detail === 'string') {
+          errorMessage = detail;
+        } 
+        // If detail is an array (validation errors), extract messages
+        else if (Array.isArray(detail)) {
+          errorMessage = detail.map(e => e.msg || e).join(', ');
+        }
+        // If detail is an object, try to get message
+        else if (typeof detail === 'object') {
+          errorMessage = detail.msg || detail.message || JSON.stringify(detail);
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -55,107 +73,112 @@ function Register() {
 
   return (
     <div className="auth-container">
-      <div className="auth-box">
-        <h1>TestMyKnowledge</h1>
-        <h2>Register</h2>
+      <div className="auth-card">
+        <div className="auth-header">
+          <h1>📚 TestMyKnowledge</h1>
+          <h2>Create Account</h2>
+          <p>Join us to start your learning journey</p>
+        </div>
 
         {error && <div className="error-message">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-row">
             <div className="form-group">
-              <label>First Name</label>
+              <label htmlFor="first_name">First Name</label>
               <input
                 type="text"
+                id="first_name"
                 name="first_name"
                 value={formData.first_name}
                 onChange={handleChange}
-                required
                 placeholder="First name"
+                required
               />
             </div>
 
             <div className="form-group">
-              <label>Last Name</label>
+              <label htmlFor="last_name">Last Name</label>
               <input
                 type="text"
+                id="last_name"
                 name="last_name"
                 value={formData.last_name}
                 onChange={handleChange}
-                required
                 placeholder="Last name"
+                required
               />
             </div>
           </div>
 
           <div className="form-group">
-            <label>Username</label>
+            <label htmlFor="username">Username</label>
             <input
               type="text"
+              id="username"
               name="username"
               value={formData.username}
               onChange={handleChange}
-              required
               placeholder="Choose a username"
+              required
             />
           </div>
 
           <div className="form-group">
-            <label>Email</label>
+            <label htmlFor="email_id">Email</label>
             <input
               type="email"
+              id="email_id"
               name="email_id"
               value={formData.email_id}
               onChange={handleChange}
-              required
               placeholder="your.email@example.com"
+              required
             />
           </div>
 
           <div className="form-group">
-            <label>Role</label>
-            <select name="role" value={formData.role} onChange={handleChange}>
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Create a password"
+              required
+              minLength="6"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="role">I am a:</label>
+            <select
+              id="role"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              className="role-select"
+            >
               <option value="STUDENT">Student</option>
               <option value="TEACHER">Teacher</option>
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="Create a password"
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Confirm Password</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              placeholder="Confirm your password"
-            />
-          </div>
-
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+          <button type="submit" className="auth-button" disabled={loading}>
+            {loading ? 'Creating Account...' : 'Register'}
           </button>
         </form>
 
-        <p className="auth-link">
-          Already have an account? <Link to="/login">Login here</Link>
-        </p>
+        <div className="auth-footer">
+          <p>
+            Already have an account? <Link to="/login">Login here</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
-}
+};
 
 export default Register;
 

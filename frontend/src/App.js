@@ -1,73 +1,125 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Home from './pages/Home';
+import Dashboard from './pages/Dashboard';
 import CreateQuiz from './pages/CreateQuiz';
-import QuizDetail from './pages/QuizDetail';
 import TakeTest from './pages/TakeTest';
-import TestResult from './pages/TestResult';
-import './styles/App.css';
+import Results from './pages/Results';
+import MyTests from './pages/MyTests';
+import ViewQuiz from './pages/ViewQuiz';
+import ClaimAssignment from './pages/ClaimAssignment';
+import TeacherQuizResults from './pages/TeacherQuizResults';
+import './App.css';
 
-function App() {
-  const [user, setUser] = useState(null);
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <div className="w-12 h-12 border-4 border-gray-200 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+  
+  return isAuthenticated ? children : <Navigate to="/login" />;
+};
 
-  useEffect(() => {
-    // Check if user is logged in (from localStorage)
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-  }, []);
+// Public Route Component (redirect to dashboard if already logged in)
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+  
+  return !isAuthenticated ? children : <Navigate to="/" />;
+};
 
-  const handleLogin = (userData) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', userData.access_token);
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-  };
-
+function AppContent() {
   return (
     <Router>
-      <Routes>
-        <Route
-          path="/login"
-          element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/home" />}
-        />
-        <Route
-          path="/register"
-          element={!user ? <Register /> : <Navigate to="/home" />}
-        />
-        <Route
-          path="/home"
-          element={user ? <Home user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/create-quiz"
-          element={user ? <CreateQuiz user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/quiz/:quizId"
-          element={user ? <QuizDetail user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/take-test/:quizId"
-          element={user ? <TakeTest user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/test-result/:uqtId"
-          element={user ? <TestResult user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}
-        />
-        <Route path="/" element={<Navigate to="/login" />} />
-      </Routes>
+      <div className="min-h-screen w-full overflow-x-hidden">
+        <Sidebar />
+        <div className="main-content">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            } />
+            <Route path="/register" element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            } />
+
+            {/* Protected Routes */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/create-quiz" element={
+              <ProtectedRoute>
+                <CreateQuiz />
+              </ProtectedRoute>
+            } />
+            <Route path="/view-quiz/:quizId" element={
+              <ProtectedRoute>
+                <ViewQuiz />
+              </ProtectedRoute>
+            } />
+            <Route path="/take-test/:quizId" element={
+              <ProtectedRoute>
+                <TakeTest />
+              </ProtectedRoute>
+            } />
+            <Route path="/results/:quizId" element={
+              <ProtectedRoute>
+                <Results />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-tests" element={
+              <ProtectedRoute>
+                <MyTests />
+              </ProtectedRoute>
+            } />
+            <Route path="/assign/:token" element={
+              <ProtectedRoute>
+                <ClaimAssignment />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/quiz/:quizId/results" element={
+              <ProtectedRoute>
+                <TeacherQuizResults />
+              </ProtectedRoute>
+            } />
+
+            {/* Redirect any unknown routes */}
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </div>
+      </div>
     </Router>
   );
 }
 
-export default App;
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
 
+export default App;

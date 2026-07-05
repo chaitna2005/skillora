@@ -1,226 +1,703 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import Sidebar from '../components/Sidebar';
-import { getQuiz, startTest, submitTest } from '../api/api';
+import { useAuth } from '../context/AuthContext';
+import { getQuiz, startTest, submitTest as submitTestAPI, getTestAnswers, saveAnswer, saveTestProgress, getTestProgress, restartTest } from '../services/api';
+import ResumeTestModal from '../components/ui/ResumeTestModal';
+import '../styles/TakeTest.css';
 
-function TakeTest({ user, onLogout }) {
+const TakeTest = () => {
   const { quizId } = useParams();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const existingUqtId = searchParams.get('uqt_id');
+  const assignmentId = searchParams.get('assignment');
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [quiz, setQuiz] = useState(null);
-  const [uqtId, setUqtId] = useState(existingUqtId);
+  const [uqtId, setUqtId] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [unansweredCount, setUnansweredCount] = useState(0);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [savedProgress, setSavedProgress] = useState(null);
+
+  // Format difficulty label for display (short form)
+  const formatDifficultyLabel = (difficulty) => {
+    if (!difficulty) return 'Med';
+    const normalized = difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase();
+    return normalized === 'Medium' ? 'Med' : normalized;
+  };
 
   useEffect(() => {
+    // Reset state when quizId changes (e.g., when retaking)
+    setQuiz(null);
+    setUqtId(null);
+    setCurrentQuestionIndex(0);
+    setAnswers({});
+    setError('');
+    setSubmitting(false);
     loadQuiz();
   }, [quizId]);
 
-  const loadQuiz = async () => {
-    setLoading(true);
-    try {
-      const quizData = await getQuiz(quizId);
-      setQuiz(quizData);
+  // ✅ Enhanced Auto-save: Save progress (question index + all answers) when they change
+  useEffect(() => {
+    if (!uqtId || !quiz || Object.keys(answers).length === 0 || showResumeModal) {
+      return;
+    }
 
-      // If no existing test, start a new one
-      if (!existingUqtId) {
-        const testData = { quiz_id: parseInt(quizId) };
-        const test = await startTest(user.user_id, testData);
-        setUqtId(test.uqt_id);
+    // Debounce: save progress 1 second after user stops changing answers
+    const timeoutId = setTimeout(() => {
+      console.log(`[AUTO-SAVE] Saving progress: question ${currentQuestionIndex}, uqt_id=${uqtId}`);
+      
+      // Save complete progress (question index + all answers)
+      saveTestProgress(uqtId, currentQuestionIndex, answers)
+        .then(() => {
+          console.log('[AUTO-SAVE] Progress saved successfully');
+        })
+        .catch(err => {
+          console.error('[AUTO-SAVE] Failed to save progress:', err);
+          // Fallback: try to save just the current answer
+          const currentQuestion = quiz.questions[currentQuestionIndex];
+          if (currentQuestion) {
+            const currentAnswers = answers[currentQuestion.question_id] || [];
+            if (currentAnswers.length > 0) {
+              saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)))
+                .catch(err2 => console.error('[AUTO-SAVE] Fallback save failed:', err2));
+            }
+          }
+        });
+    }, 1000); // 1 second debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [answers, currentQuestionIndex, uqtId, quiz, showResumeModal]);
+
+  // Save answers when component unmounts (user navigates away)
+  useEffect(() => {
+    return () => {
+      // Cleanup: save current answer when component unmounts
+      if (uqtId && quiz && !submitting) {
+        const currentQuestion = quiz.questions[currentQuestionIndex];
+        if (currentQuestion) {
+          const currentAnswers = answers[currentQuestion.question_id] || [];
+          if (currentAnswers.length > 0) {
+            // Use sendBeacon for reliability during navigation
+            const answerData = JSON.stringify({
+              question_id: currentQuestion.question_id,
+              question_option_ids: currentAnswers.map(id => parseInt(id))
+            });
+            
+            // Try to save synchronously using fetch with keepalive
+            fetch(`/api/test/save-answer/${uqtId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: answerData,
+              keepalive: true
+            }).catch(() => {
+              // Ignore errors - answers are already saved on navigation
+            });
+          }
+        }
       }
-    } catch (error) {
-      console.error('Error loading quiz:', error);
-      alert('Failed to load quiz');
+    };
+  }, [uqtId, quiz, answers, currentQuestionIndex, submitting]);
+
+  const loadQuiz = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // CRITICAL: Start or resume the test first to get uqt_id
+      // Backend ALWAYS checks for existing pending test (completed_time IS NULL) before creating new one
+      // This prevents duplicate attempts from being created
+      // If existing pending test found: Returns existing uqt_id
+      // If NO existing pending test: Creates ONE new attempt and returns uqt_id
+      const testData = await startTest(user.user_id, quizId, assignmentId);
+      
+      // CRITICAL: Store uqt_id immediately - this is the SINGLE attempt ID for this test session
+      if (!testData || !testData.uqt_id) {
+        throw new Error('Failed to start test: uqt_id not returned');
+      }
+      
+      console.log(`[DEBUG] Test started/resumed: uqt_id=${testData.uqt_id}`);
+      setUqtId(testData.uqt_id);
+      
+      // CRITICAL: Persist uqt_id to localStorage for reliability
+      // Store both with quizId key (for recovery) and simple key (for submit)
+      localStorage.setItem(`uqt_id_${quizId}`, testData.uqt_id.toString());
+      localStorage.setItem("uqt_id", testData.uqt_id.toString());
+      
+      // Fetch quiz with shuffling for test integrity
+      // Use uqt_id as seed for deterministic shuffling (consistent order per attempt)
+      const quizData = await getQuiz(quizId, true, testData.uqt_id);
+      setQuiz(quizData);
+      
+      // Initialize answers object
+      const initialAnswers = {};
+      quizData.questions.forEach(q => {
+        initialAnswers[q.question_id] = [];
+      });
+      
+      // ✅ NEW: Check for saved progress for resume functionality
+      try {
+        const progressData = await getTestProgress(testData.uqt_id);
+        
+        if (progressData && progressData.success) {
+          const hasAnswers = progressData.answers && Object.keys(progressData.answers).length > 0;
+          const questionIndex = progressData.current_question_index || 0;
+          
+          // If there's saved progress (answers or non-zero index), show resume modal
+          if (hasAnswers || questionIndex > 0) {
+            console.log(`[RESUME] Found saved progress at question ${questionIndex}`);
+            setSavedProgress({
+              current_question_index: questionIndex,
+              answers: progressData.answers || {}
+            });
+            setShowResumeModal(true);
+            
+            // Don't auto-load progress yet - wait for user choice
+            setAnswers(initialAnswers);
+            setLoading(false);
+            return; // Exit early - user will choose resume or restart
+          }
+        }
+      } catch (err) {
+        console.log('[RESUME] No saved progress found, starting fresh');
+        // No saved progress - continue normally
+      }
+      
+      // No saved progress OR old behavior - load normally
+      // CRITICAL: Load existing answers ONLY when coming from Pending Tests (assignmentId exists)
+      // My Quizzes (assignmentId is NULL) must NEVER load existing answers - always start fresh
+      // This enforces strict separation: My Quizzes = START, Pending Tests = CONTINUE
+      if (assignmentId) {
+        // Coming from Pending Tests - check if test is IN_PROGRESS and load saved answers
+        const testStatus = testData.status || (testData.start_time && !testData.completed_time ? 'IN_PROGRESS' : 'NOT_STARTED');
+        
+        if (testStatus === 'IN_PROGRESS') {
+          try {
+            const existingAnswers = await getTestAnswers(testData.uqt_id);
+            if (existingAnswers && existingAnswers.answers) {
+              // Merge existing answers into initial answers
+              Object.keys(existingAnswers.answers).forEach(questionId => {
+                const questionIdInt = parseInt(questionId);
+                if (existingAnswers.answers[questionId] && existingAnswers.answers[questionId].length > 0) {
+                  initialAnswers[questionIdInt] = existingAnswers.answers[questionId].map(id => parseInt(id));
+                }
+              });
+            }
+          } catch (err) {
+            // If no existing answers, that's fine - start fresh
+          }
+        }
+      }
+      // If assignmentId is NULL (My Quizzes), always start with empty answers - no continuation
+      
+      setAnswers(initialAnswers);
+    } catch (err) {
+      setError('Failed to load quiz. Please try again.');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAnswerChange = (questionId, optionId, isChecklist) => {
-    if (isChecklist) {
-      // For checklist, toggle the option
-      const currentAnswers = answers[questionId] || [];
-      const newAnswers = currentAnswers.includes(optionId)
-        ? currentAnswers.filter(id => id !== optionId)
-        : [...currentAnswers, optionId];
-      
-      setAnswers({
-        ...answers,
-        [questionId]: newAnswers,
+  const handleAnswerChange = (questionId, optionId, isMultiple) => {
+    if (isMultiple) {
+      // For CHECKLIST questions (multiple answers)
+      setAnswers(prev => {
+        const currentAnswers = prev[questionId] || [];
+        if (currentAnswers.includes(optionId)) {
+          return {
+            ...prev,
+            [questionId]: currentAnswers.filter(id => id !== optionId)
+          };
+        } else {
+          return {
+            ...prev,
+            [questionId]: [...currentAnswers, optionId]
+          };
+        }
       });
     } else {
-      // For radio, replace with single option
-      setAnswers({
-        ...answers,
-        [questionId]: [optionId],
-      });
-    }
-  };
-
-  const handleNext = () => {
-    if (currentQuestionIndex < quiz.questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
+      // For RADIO questions (single answer)
+      setAnswers(prev => ({
+        ...prev,
+        [questionId]: [optionId]
+      }));
     }
   };
 
   const handleSubmit = async () => {
     // Check if all questions are answered
-    const unanswered = quiz.questions.filter(q => !answers[q.question_id] || answers[q.question_id].length === 0);
-    
-    if (unanswered.length > 0) {
-      const confirmSubmit = window.confirm(
-        `You have ${unanswered.length} unanswered question(s). Submit anyway?`
-      );
-      if (!confirmSubmit) return;
+    const unansweredQuestions = quiz.questions.filter(
+      q => !answers[q.question_id] || answers[q.question_id].length === 0
+    );
+
+    if (unansweredQuestions.length > 0) {
+      // Show custom modal instead of browser confirm
+      setUnansweredCount(unansweredQuestions.length);
+      setShowSubmitModal(true);
+      return;
     }
 
+    // Proceed with submission
+    await submitTest();
+  };
+
+  const submitTest = async () => {
+    // Clear any previous submit errors
+    setSubmitError('');
     setSubmitting(true);
+
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
     try {
-      const submissionData = {
-        uqt_id: parseInt(uqtId),
-        answers: quiz.questions.map(q => ({
-          question_id: q.question_id,
-          question_option_ids: answers[q.question_id] || [],
-        })),
+      // Save current question's answer before submitting (if on a question with answers)
+      if (uqtId && quiz) {
+        const currentQuestion = quiz.questions[currentQuestionIndex];
+        const currentAnswers = answers[currentQuestion.question_id] || [];
+        
+        if (currentAnswers.length > 0) {
+          try {
+            await saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)));
+          } catch (err) {
+            console.error('Failed to save current answer before submit:', err);
+            // Continue with submission even if save fails
+          }
+        }
+      }
+      
+      // Format answers for API - group by question_id with question_option_ids array
+      const formattedAnswers = [];
+      Object.keys(answers).forEach(questionId => {
+        if (answers[questionId] && answers[questionId].length > 0) {
+          formattedAnswers.push({
+            question_id: parseInt(questionId),
+            question_option_ids: answers[questionId].map(id => parseInt(id))
+          });
+        }
+      });
+
+      // CRITICAL: Use the SAME uqt_id that was set when test started
+      // This ensures we're submitting to the correct attempt (not a duplicate)
+      // Fallback to localStorage if state was lost
+      let finalUqtId = uqtId;
+      
+      // Try simple key first, then quiz-specific key
+      if (!finalUqtId) {
+        const storedUqtId = localStorage.getItem("uqt_id");
+        if (storedUqtId) {
+          finalUqtId = parseInt(storedUqtId);
+          console.log(`[DEBUG] Recovered uqt_id from localStorage (simple key): ${finalUqtId}`);
+          setUqtId(finalUqtId);
+        }
+      }
+      
+      if (!finalUqtId && quiz) {
+        const storedUqtId = localStorage.getItem(`uqt_id_${quiz.quiz_id}`);
+        if (storedUqtId) {
+          finalUqtId = parseInt(storedUqtId);
+          console.log(`[DEBUG] Recovered uqt_id from localStorage (quiz key): ${finalUqtId}`);
+          setUqtId(finalUqtId);
+        }
+      }
+      
+      // CRITICAL: Validate uqt_id exists before submission
+      if (!finalUqtId || isNaN(finalUqtId)) {
+        console.error('[ERROR] uqt_id is missing or invalid:', { uqtId, finalUqtId, quizId: quiz?.quiz_id });
+        throw new Error('Test session ID is missing. Please start the test again.');
+      }
+      
+      console.log(`[DEBUG] Using uqt_id for submission: ${finalUqtId}`);
+      
+      // MANDATORY: Include user_id and quiz_id for reliable submission
+      const submitData = {
+        uqt_id: finalUqtId,  // Optional - backend will use user_id + quiz_id if unreliable
+        user_id: user.user_id,  // Required
+        quiz_id: quiz.quiz_id,  // Required
+        answers: formattedAnswers
       };
 
-      const result = await submitTest(submissionData);
-      navigate(`/test-result/${result.uqt_id}`);
-    } catch (error) {
-      console.error('Error submitting test:', error);
-      alert('Failed to submit test. Please try again.');
+      console.log(`[DEBUG] Submitting test with uqt_id=${finalUqtId}, answers count=${formattedAnswers.length}`);
+      
+      // CRITICAL: Verify uqt_id is in submitData
+      if (!submitData.uqt_id || submitData.uqt_id !== finalUqtId) {
+        console.error('[ERROR] uqt_id mismatch in submitData:', { 
+          submitDataUqtId: submitData.uqt_id, 
+          finalUqtId 
+        });
+        throw new Error('Session ID mismatch. Please try again.');
+      }
+      
+      // Call the renamed API function
+      const result = await submitTestAPI(submitData);
+      
+      // Clear timeout on success
+      clearTimeout(timeoutId);
+      
+      // CRITICAL: Navigate to results using the SAME uqt_id
+      // Clear localStorage after successful submission
+      localStorage.removeItem("uqt_id");
+      if (quiz) {
+        localStorage.removeItem(`uqt_id_${quiz.quiz_id}`);
+      }
+      
+      console.log(`[DEBUG] Test submitted successfully, navigating to results`);
+      console.log(`[DEBUG] Result data:`, { 
+        uqt_id: result.uqt_id, 
+        completed_time: result.completed_time,
+        total_correct: result.total_correct,
+        quiz_id: result.quiz_id
+      });
+      
+      // CRITICAL: Navigate to results using quiz_id (backend will fetch latest completed attempt)
+      navigate(`/results/${quiz.quiz_id}`);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      
+      console.error('[ERROR] Failed to submit test:', err);
+      
+      // Handle different error types
+      if (err.name === 'AbortError') {
+        setSubmitError('Request timed out. Please check your connection and try again.');
+      } else if (err.message) {
+        setSubmitError(err.message);
+      } else {
+        setSubmitError('Failed to submit test. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
+  const goToQuestion = (index) => {
+    setCurrentQuestionIndex(index);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowSubmitModal(false);
+    await submitTest();
+  };
+
+  const handleCancelSubmit = () => {
+    setShowSubmitModal(false);
+  };
+
+  // ✅ Resume Test: Load saved progress and continue
+  const handleResumeTest = () => {
+    if (savedProgress) {
+      console.log('[RESUME] Resuming test from saved progress');
+      
+      // Load saved answers
+      const loadedAnswers = {};
+      quiz.questions.forEach(q => {
+        loadedAnswers[q.question_id] = [];
+      });
+      
+      // Merge saved answers
+      Object.keys(savedProgress.answers).forEach(questionId => {
+        const questionIdInt = parseInt(questionId);
+        if (savedProgress.answers[questionId] && savedProgress.answers[questionId].length > 0) {
+          loadedAnswers[questionIdInt] = savedProgress.answers[questionId].map(id => parseInt(id));
+        }
+      });
+      
+      setAnswers(loadedAnswers);
+      setCurrentQuestionIndex(savedProgress.current_question_index || 0);
+    }
+    
+    setShowResumeModal(false);
+    setLoading(false);
+  };
+
+  // ✅ Restart Test: Clear all progress and start from question 1
+  const handleRestartTest = async () => {
+    console.log('[RESTART] Restarting test from beginning');
+    
+    try {
+      // Call API to clear progress
+      await restartTest(uqtId);
+      
+      // Reset frontend state
+      const initialAnswers = {};
+      quiz.questions.forEach(q => {
+        initialAnswers[q.question_id] = [];
+      });
+      
+      setAnswers(initialAnswers);
+      setCurrentQuestionIndex(0);
+      setSavedProgress(null);
+      
+      console.log('[RESTART] Test restarted successfully');
+    } catch (err) {
+      console.error('[RESTART] Failed to restart test:', err);
+      // Continue anyway - at least reset frontend state
+      const initialAnswers = {};
+      quiz.questions.forEach(q => {
+        initialAnswers[q.question_id] = [];
+      });
+      setAnswers(initialAnswers);
+      setCurrentQuestionIndex(0);
+    }
+    
+    setShowResumeModal(false);
+    setLoading(false);
+  };
+
+  const handleCancelResume = () => {
+    // User cancelled - exit back to dashboard
+    navigate('/');
+  };
+
+  // Handle ESC key press to close modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showSubmitModal) {
+        setShowSubmitModal(false);
+      }
+    };
+
+    if (showSubmitModal) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [showSubmitModal]);
+
+  const nextQuestion = async () => {
+    // Save current question's answer before moving to next
+    if (uqtId && quiz) {
+      const currentQuestion = quiz.questions[currentQuestionIndex];
+      const currentAnswers = answers[currentQuestion.question_id] || [];
+      
+      if (currentAnswers.length > 0) {
+        try {
+          await saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)));
+          console.log(`Saved answer for question ${currentQuestion.question_id}`);
+        } catch (err) {
+          console.error('Failed to save answer:', err);
+          // Don't block navigation if save fails - user can still continue
+        }
+      }
+    }
+    
+    // Move to next question
+    if (currentQuestionIndex < quiz.questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    }
+  };
+
+  const previousQuestion = async () => {
+    // Save current question's answer before moving to previous
+    if (uqtId && quiz) {
+      const currentQuestion = quiz.questions[currentQuestionIndex];
+      const currentAnswers = answers[currentQuestion.question_id] || [];
+      
+      if (currentAnswers.length > 0) {
+        try {
+          await saveAnswer(uqtId, currentQuestion.question_id, currentAnswers.map(id => parseInt(id)));
+        } catch (err) {
+          // Don't block navigation if save fails
+        }
+      }
+    }
+    
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="app-layout">
-        <Sidebar user={user} onLogout={onLogout} />
-        <div className="main-content">
-          <div className="loading">Loading test...</div>
-        </div>
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>Loading quiz...</p>
       </div>
     );
   }
 
-  if (!quiz || !quiz.questions) {
+  if (error || !quiz) {
     return (
-      <div className="app-layout">
-        <Sidebar user={user} onLogout={onLogout} />
-        <div className="main-content">
-          <div className="error-message">Test not found</div>
-        </div>
+      <div className="error-container">
+        <p>{error || 'Quiz not found'}</p>
+        <button onClick={() => navigate('/')}>Go Back</button>
       </div>
     );
   }
 
   const currentQuestion = quiz.questions[currentQuestionIndex];
-  const isChecklist = currentQuestion.question_type === 'CHECKLIST';
-  const selectedAnswers = answers[currentQuestion.question_id] || [];
+  const isMultiple = currentQuestion.question_type === 'CHECKLIST';
+  const currentAnswers = answers[currentQuestion.question_id] || [];
 
   return (
-    <div className="app-layout">
-      <Sidebar user={user} onLogout={onLogout} />
-      
-      <div className="main-content">
-        <div className="test-container">
-          <div className="test-header">
-            <h1>{quiz.quiz_name}</h1>
-            <div className="progress">
-              Question {currentQuestionIndex + 1} of {quiz.questions.length}
-            </div>
-          </div>
+    <div className="take-test-container">
+      {/* ✅ Resume Test Modal */}
+      <ResumeTestModal
+        open={showResumeModal}
+        onResume={handleResumeTest}
+        onRestart={handleRestartTest}
+        onCancel={handleCancelResume}
+        questionIndex={savedProgress?.current_question_index || 0}
+        totalQuestions={quiz?.questions?.length || 0}
+      />
 
-          <div className="question-card">
-            <div className="question-header">
-              <h2>Question {currentQuestionIndex + 1}</h2>
-              <span className="question-type-badge">
-                {isChecklist ? 'Multiple Answers' : 'Single Answer'}
-              </span>
-            </div>
+      {/* Submit Error Toast */}
+      {submitError && (
+        <div className="error-toast">
+          <span>{submitError}</span>
+          <button onClick={() => setSubmitError('')} className="error-toast-close">
+            ✕
+          </button>
+        </div>
+      )}
 
-            <p className="question-text">{currentQuestion.question_text}</p>
-
-            <div className="options-list">
-              {currentQuestion.options.map((option) => (
-                <label
-                  key={option.question_option_id}
-                  className={`option-item ${
-                    selectedAnswers.includes(option.question_option_id) ? 'selected' : ''
-                  }`}
-                >
-                  <input
-                    type={isChecklist ? 'checkbox' : 'radio'}
-                    name={`question-${currentQuestion.question_id}`}
-                    checked={selectedAnswers.includes(option.question_option_id)}
-                    onChange={() =>
-                      handleAnswerChange(
-                        currentQuestion.question_id,
-                        option.question_option_id,
-                        isChecklist
-                      )
-                    }
-                  />
-                  <span>{option.option_text}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="test-navigation">
-            <button
-              className="btn-secondary"
-              onClick={handlePrevious}
-              disabled={currentQuestionIndex === 0}
-            >
-              ← Previous
-            </button>
-
-            <div className="question-indicators">
-              {quiz.questions.map((_, index) => (
-                <button
-                  key={index}
-                  className={`indicator ${
-                    index === currentQuestionIndex ? 'active' : ''
-                  } ${answers[quiz.questions[index].question_id]?.length > 0 ? 'answered' : ''}`}
-                  onClick={() => setCurrentQuestionIndex(index)}
-                >
-                  {index + 1}
-                </button>
-              ))}
-            </div>
-
-            {currentQuestionIndex === quiz.questions.length - 1 ? (
-              <button
-                className="btn-primary"
-                onClick={handleSubmit}
-                disabled={submitting}
-              >
-                {submitting ? 'Submitting...' : 'Submit Test'}
-              </button>
-            ) : (
-              <button className="btn-primary" onClick={handleNext}>
-                Next →
-              </button>
-            )}
-          </div>
+      <div className="test-header">
+        <div className="test-info">
+          <h1>{quiz.quiz_name}</h1>
+          <p className="test-meta">
+            <span>{quiz.questions.length} Questions</span>
+            <span className={`difficulty ${quiz.difficulty_level.toLowerCase()}`}>
+              {formatDifficultyLabel(quiz.difficulty_level)}
+            </span>
+          </p>
         </div>
       </div>
+
+      <div className="test-progress">
+        <div className="progress-bar">
+          <div 
+            className="progress-fill" 
+            style={{ width: `${((currentQuestionIndex + 1) / quiz.questions.length) * 100}%` }}
+          />
+        </div>
+        <p className="progress-text">
+          Question {currentQuestionIndex + 1} of {quiz.questions.length}
+        </p>
+      </div>
+
+      <div className="question-indicators">
+        <div className="palette-header">
+          <span className="palette-title">Question Navigator</span>
+          <button 
+            className="palette-toggle"
+            onClick={() => setIsPaletteOpen(!isPaletteOpen)}
+            aria-label={isPaletteOpen ? "Collapse palette" : "Expand palette"}
+          >
+            {isPaletteOpen ? '▲' : '▼'}
+          </button>
+        </div>
+        {isPaletteOpen && (
+          <div className="palette-content">
+            {quiz.questions.map((q, index) => (
+              <button
+                key={q.question_id}
+                className={`indicator ${index === currentQuestionIndex ? 'active' : ''} ${
+                  answers[q.question_id] && answers[q.question_id].length > 0 ? 'answered' : ''
+                }`}
+                onClick={() => goToQuestion(index)}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="question-card">
+        <div className="question-header">
+          <h2>Question {currentQuestionIndex + 1}</h2>
+          <span className="question-type">
+            {isMultiple ? '☑️ Multiple Choice' : '⭕ Single Choice'}
+          </span>
+        </div>
+        
+        <p className="question-text">{currentQuestion.question_text}</p>
+
+        <div className="options-container">
+          {currentQuestion.options.map((option, index) => (
+            <label
+              key={option.question_option_id}
+              className={`option-label ${
+                currentAnswers.includes(option.question_option_id) ? 'selected' : ''
+              }`}
+            >
+              <input
+                type={isMultiple ? 'checkbox' : 'radio'}
+                name={`question-${currentQuestion.question_id}`}
+                value={option.question_option_id}
+                checked={currentAnswers.includes(option.question_option_id)}
+                onChange={() => handleAnswerChange(
+                  currentQuestion.question_id,
+                  option.question_option_id,
+                  isMultiple
+                )}
+              />
+              <span className="option-number">{index + 1}.</span>
+              <span className="option-text">{option.option_text}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="navigation-buttons">
+        <button
+          onClick={previousQuestion}
+          disabled={currentQuestionIndex === 0}
+          className="nav-btn prev-btn"
+        >
+          ← Previous
+        </button>
+
+        {currentQuestionIndex === quiz.questions.length - 1 ? (
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="submit-test-btn"
+          >
+            {submitting ? 'Submitting...' : '✓ Submit Test'}
+          </button>
+        ) : (
+          <button
+            onClick={nextQuestion}
+            className="nav-btn next-btn"
+          >
+            Next →
+          </button>
+        )}
+      </div>
+
+      {/* Submit Confirmation Modal */}
+      {showSubmitModal && (
+        <div className="modal-overlay" onClick={handleCancelSubmit}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <p style={{ fontSize: '15px', color: '#475569', margin: '0 0 24px 0', lineHeight: '1.5' }}>
+              You have {unansweredCount} unanswered question(s). Do you want to submit anyway?
+            </p>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={handleCancelSubmit}>
+                Go Back
+              </button>
+              <button className="btn-delete" onClick={handleConfirmSubmit}>
+                Submit Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default TakeTest;
 

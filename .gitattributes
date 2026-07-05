@@ -1,0 +1,2 @@
+# Shell scripts must use LF or bash fails on macOS/Linux (CRLF → "command not found", "set: invalid option")
+*.sh text eol=lf

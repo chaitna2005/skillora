@@ -17,6 +17,8 @@ A web application that allows users to create AI-generated quizzes and test thei
   - [Linux Setup](#linux-setup)
 - [Configuration](#configuration)
 - [Running the Application](#running-the-application)
+- [Running with Docker (Local)](#running-with-docker-local)
+- [Deploy to VPS (Docker Hub)](#deploy-to-vps-docker-hub)
 - [API Documentation](#api-documentation)
 - [Database Schema](#database-schema)
 - [Troubleshooting](#troubleshooting)
@@ -347,6 +349,51 @@ Frontend will open automatically at: `http://localhost:3000`
 
 ---
 
+## 🐳 Running with Docker (Local)
+
+Run the full app (PostgreSQL, backend, frontend) in Docker with no local Python/Node/Postgres install.
+
+### Prerequisites
+
+- **Docker** and **Docker Compose** installed ([docs](https://docs.docker.com/get-docker/))
+- **OpenAI API key** for quiz generation
+
+### Setup and run
+
+1. **Create environment file** (from project root):
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and set at least:
+   - `OPENAI_API_KEY=sk-your-openai-api-key`
+   - Optionally change `POSTGRES_PASSWORD` and `SECRET_KEY` for local use.
+
+2. **Start all services**:
+   ```bash
+   docker compose up --build
+   ```
+   First run will build the backend and frontend images and create the Postgres database (schema runs automatically from `database/schema.sql`).
+
+3. **Open the app**
+   - **App:** [http://localhost:3000](http://localhost:3000)
+   - **API:** [http://localhost:8000](http://localhost:8000)
+   - **API docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### Useful commands
+
+- **Run in background:** `docker compose up -d --build`
+- **View logs:** `docker compose logs -f`
+- **Stop:** `docker compose down`
+- **Reset database (delete data):** `docker compose down -v` then `docker compose up -d`
+
+### Deploy to VPS (Docker Hub)
+
+Pre-built images (no build on the droplet): **`scripts/build-and-push-images.sh`**, **`docker-compose.pull.yml`**, env template **`deploy/.env.example`**.
+
+Full steps: **[docs/DEPLOY-DROPLET.md](docs/DEPLOY-DROPLET.md)** — on a shared droplet with ERP, Skillora uses **9080** (UI) and **9081** (API); ERP stays on **8080**.
+
+---
+
 ## 📚 API Documentation
 
 Once the backend is running, visit `http://localhost:8000/docs` for interactive API documentation (Swagger UI).
@@ -555,28 +602,20 @@ Once the backend is running, visit `http://localhost:8000/docs` for interactive 
 
 ## 🚀 Deployment (Google Cloud)
 
-### Prerequisites
-- Google Cloud account
-- gcloud CLI installed
+Deploy to project **skillora-App** using the Makefile. Full steps: **[DEPLOY.md](DEPLOY.md)**.
 
-### Steps (High-level)
+**Prerequisites:** [gcloud CLI](https://cloud.google.com/sdk/docs/install), Docker.
 
-1. **Backend Deployment (Cloud Run)**
-   - Containerize FastAPI app
-   - Push to Google Container Registry
-   - Deploy to Cloud Run
-
-2. **Database (Cloud SQL)**
-   - Create PostgreSQL instance
-   - Import schema
-   - Update connection strings
-
-3. **Frontend (Cloud Storage + CDN)**
-   - Build React app: `npm run build`
-   - Upload to Cloud Storage bucket
-   - Enable static website hosting
-
-*Detailed deployment guide coming soon*
+**Quick sequence:**
+```bash
+cp gcp.env.example gcp.env   # set DB_PASSWORD, OPENAI_API_KEY, SECRET_KEY
+make gcp-auth && make gcp-apis && make gcp-repo
+make gcp-db && make gcp-schema
+make gcp-build && make gcp-deploy-backend
+# Add BACKEND_URL to gcp.env, then:
+make gcp-build-frontend && make gcp-deploy-frontend
+make gcp-urls
+```
 
 ---
 
