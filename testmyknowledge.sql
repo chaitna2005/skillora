@@ -136,11 +136,6 @@ CREATE INDEX idx_user_stats_last_active_date ON "User_Stats"(last_active_date);
 -- Insert Sample Data (Optional - for testing)
 -- ================================================
 
--- Sample Users
-INSERT INTO "User" (first_name, last_name, username, password, email_id, role) VALUES
-('John', 'Teacher', 'johnteacher', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'john.teacher@example.com', 'TEACHER'),
-('Jane', 'Student', 'janestudent', '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8', 'jane.student@example.com', 'STUDENT');
-
 -- Note: Password above is SHA256 hash of "password"
 -- In production, use proper password hashing
 

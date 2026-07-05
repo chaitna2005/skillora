@@ -30,6 +30,8 @@ venv.bak/
 .env
 .env.local
 .env.*.local
+gcp.env
+deploy/.env.production
 
 # IDEs
 .vscode/

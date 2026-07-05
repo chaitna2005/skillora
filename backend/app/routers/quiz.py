@@ -396,7 +396,7 @@ def create_assignment(
         token_json = json.dumps(token_data)
         share_token = base64.urlsafe_b64encode(token_json.encode()).decode().rstrip('=')
         
-        frontend_url = settings.CORS_ORIGINS[0] if settings.CORS_ORIGINS else "http://localhost:3000"
+        frontend_url = settings.cors_origins_list[0] if settings.cors_origins_list else "http://localhost:3000"
         share_url = f"{frontend_url}/assign/{share_token}"
         
         return {
